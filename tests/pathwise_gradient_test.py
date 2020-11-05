@@ -1,13 +1,14 @@
 import unittest
-import torch
 
-from mc_estimators import pathwise_gradient
+import torch
 from torch import nn
 
+from mc_estimators import pathwise_gradient
 
-class TestPathwiseNormal(unittest.TestCase):
+
+class TestPathwise(unittest.TestCase):
     def test_squared_to_zero_1d(self):
-        def f(z): return z**2
+        def f(z): return z ** 2
 
         mean = nn.Linear(1, 1)
         normal = pathwise_gradient.Pathwise(f, 100, torch.distributions.Normal)
@@ -24,7 +25,7 @@ class TestPathwiseNormal(unittest.TestCase):
         torch.allclose(actual_mean, torch.tensor([0.]), atol=1e-2)
 
     def test_squared_to_zero_2d(self):
-        def f(z): return z**2
+        def f(z): return z ** 2
 
         mean = nn.Linear(2, 2)
         normal = pathwise_gradient.Pathwise(f, 100, torch.distributions.MultivariateNormal)

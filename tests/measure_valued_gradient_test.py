@@ -11,7 +11,7 @@ class TestReinforce(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(1, 1)
-        normal = reinforce_gradient.Reinforce(f, 100, torch.distributions.Normal)
+        normal = reinforce_gradient.Reinforce(f, 3, torch.distributions.Normal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
@@ -28,7 +28,7 @@ class TestReinforce(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(2, 2)
-        normal = reinforce_gradient.Reinforce(f, 100, torch.distributions.MultivariateNormal)
+        normal = reinforce_gradient.Reinforce(f, 3, torch.distributions.MultivariateNormal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
