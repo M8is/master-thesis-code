@@ -11,7 +11,7 @@ class TestMVD(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(1, 1)
-        normal = measure_valued_gradient.MVD(f, 3, 1)
+        normal = measure_valued_gradient.MVD(f, 100, 1)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
@@ -28,7 +28,7 @@ class TestMVD(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(2, 2)
-        normal = measure_valued_gradient.MVD(f, 3, 2)
+        normal = measure_valued_gradient.MVD(f, 100, 2)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
