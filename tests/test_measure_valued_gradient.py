@@ -3,15 +3,15 @@ import unittest
 import torch
 from torch import nn
 
-from mc_estimators import reinforce_gradient
+from mc_estimators import measure_valued_gradient
 
 
-class TestReinforce(unittest.TestCase):
+class TestMVD(unittest.TestCase):
     def test_squared_to_zero_1d(self):
         def f(z): return z**2
 
         mean = nn.Linear(1, 1)
-        normal = reinforce_gradient.Reinforce(f, 3, torch.distributions.Normal)
+        normal = measure_valued_gradient.MVD(f, 3, 1)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
@@ -28,7 +28,7 @@ class TestReinforce(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(2, 2)
-        normal = reinforce_gradient.Reinforce(f, 3, torch.distributions.MultivariateNormal)
+        normal = measure_valued_gradient.MVD(f, 3, 2)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
