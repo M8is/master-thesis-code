@@ -20,7 +20,7 @@ class MVD(Probabilistic):
             neg_samples = torch.Tensor(weibull(sqrt(2.), (self.episode_size, self.output_dim)))
         return pos_samples, neg_samples
 
-    def forward_mc(self, x, objective, params):
+    def forward_mc(self, objective, params):
         mean, cov = params
         pos_samples, neg_samples = self.get_samples()
         mean_vector = torch.stack([mean] * self.episode_size, dim=0)
@@ -35,4 +35,4 @@ class MVD(Probabilistic):
             neg_losses = objective(mean_vector - neg_samples * cov)
             c = 1 / (sqrt(2 * pi) * cov)
             grad_estimate = ((pos_losses - neg_losses) * c).mean(dim=0)
-        return grad_estimate.detach() * mean
+        return (grad_estimate.detach() * mean).mean()

@@ -4,32 +4,54 @@ import torch
 
 import models.vae
 import train.vae
-from mc_estimators.pathwise_gradient import Pathwise
+from mc_estimators.pathwise import Pathwise
+from mc_estimators.reinforce import Reinforce
+from mc_estimators.measure_valued_derivative import MVD
 
 
 class TestVAE(unittest.TestCase):
-    def test_vae(self):
+    def setUp(self):
         torch.manual_seed(1231532)
 
-        def pp(mean):
-            # sigma = sigma.reshape((latent_dim, latent_dim))
-            # sigma.T @ sigma
-            return mean.squeeze(), .1 * torch.eye(latent_dim)
+        self.data_holder = train.vae.DataHolder()
+        self.data_holder.load_datasets()
 
-        # Load the data
-        data_holder = train.vae.DataHolder()
-        data_holder.load_datasets()
+        self.latent_dim = 5
+        self.hidden_dim = 10
+        self.data_dim = self.data_holder.height * self.data_holder.width
 
-        # Train the Variational Auto Encoder
-        latent_dim = 20
-        hidden_dim = 200
-        data_dim = data_holder.height * data_holder.width
-        encoder = models.vae.Encoder(data_dim, hidden_dim, (latent_dim,), post_processor=pp)
-        decoder = models.vae.Decoder(data_dim, hidden_dim, latent_dim)
-        vae_model = models.vae.VAE(encoder, decoder, Pathwise(1000, torch.distributions.MultivariateNormal))
+        self.episode_size = 20
 
-        vae = train.vae.VAE(vae_model, data_holder, torch.optim.Adam)
-        vae.train(3)
+    def pp(self, mean):
+        return mean.squeeze(), .1 * torch.eye(self.latent_dim)
+
+    def test_vae_pathwise(self):
+        encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
+        decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
+        vae_model = models.vae.VAE(encoder, decoder,
+                                   Pathwise(self.episode_size, torch.distributions.MultivariateNormal))
+
+        vae = train.vae.VAE(vae_model, self.data_holder, torch.optim.Adam)
+        vae.train(1)
+
+    def test_vae_reinforce(self):
+        encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
+        decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
+        vae_model = models.vae.VAE(encoder, decoder,
+                                   Reinforce(self.episode_size, torch.distributions.MultivariateNormal))
+
+        vae = train.vae.VAE(vae_model, self.data_holder, torch.optim.Adam)
+        vae.train(1)
+
+    @unittest.skip("not yet implemented")
+    def test_vae_mvd(self):
+        encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
+        decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
+        vae_model = models.vae.VAE(encoder, decoder,
+                                   MVD(self.episode_size, self.latent_dim, torch.distributions.MultivariateNormal))
+
+        vae = train.vae.VAE(vae_model, self.data_holder, torch.optim.Adam)
+        vae.train(1)
 
 
 if __name__ == '__main__':

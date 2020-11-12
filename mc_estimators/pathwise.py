@@ -7,6 +7,6 @@ class Pathwise(Probabilistic):
         self.episode_size = episode_size
         self.distribution = distribution
 
-    def forward_mc(self, x, objective, params):
+    def forward_mc(self, objective, params):
         samples = self.distribution(*params).rsample((self.episode_size,))
-        return objective(samples)
+        return objective(samples).mean()

@@ -7,9 +7,9 @@ class Reinforce(Probabilistic):
         self.episode_size = episode_size
         self.distribution = distribution
         
-    def forward_mc(self, x, objective, params):
+    def forward_mc(self, objective, params):
         dist = self.distribution(*params)
         samples = dist.sample((self.episode_size,))
         losses = objective(samples)
         log_probs = dist.log_prob(samples).reshape(-1, 1)
-        return losses * log_probs
+        return (losses * log_probs).mean()

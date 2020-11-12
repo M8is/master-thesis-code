@@ -3,22 +3,22 @@ import unittest
 import torch
 from torch import nn
 
-from mc_estimators import measure_valued_gradient
+from mc_estimators import reinforce
 
 
-class TestMVD(unittest.TestCase):
+class TestReinforce(unittest.TestCase):
     def test_squared_to_zero_1d(self):
         def f(z): return z**2
 
         mean = nn.Linear(1, 1)
-        normal = measure_valued_gradient.MVD(f, 100, 1)
+        normal = reinforce.Reinforce(100, torch.distributions.Normal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
         x = torch.ones(1)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal((mean(x), 1)).backward()
+            normal(f, (mean(x), 1)).backward()
             optimizer.step()
 
         actual_mean = mean(torch.ones(1))
@@ -28,7 +28,7 @@ class TestMVD(unittest.TestCase):
         def f(z): return z**2
 
         mean = nn.Linear(2, 2)
-        normal = measure_valued_gradient.MVD(f, 100, 2)
+        normal = reinforce.Reinforce(100, torch.distributions.MultivariateNormal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
@@ -36,7 +36,7 @@ class TestMVD(unittest.TestCase):
         cov = torch.eye(2)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal((mean(x), cov)).backward(torch.ones(2))
+            normal(f, (mean(x), cov)).backward()
             optimizer.step()
 
         actual_mean = mean(torch.ones(2))

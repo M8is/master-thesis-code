@@ -3,7 +3,7 @@ import unittest
 import torch
 from torch import nn
 
-from mc_estimators import pathwise_gradient
+from mc_estimators import pathwise
 
 
 class TestPathwise(unittest.TestCase):
@@ -11,14 +11,14 @@ class TestPathwise(unittest.TestCase):
         def f(z): return z ** 2
 
         mean = nn.Linear(1, 1)
-        normal = pathwise_gradient.Pathwise(100, torch.distributions.Normal)
+        normal = pathwise.Pathwise(100, torch.distributions.Normal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
         x = torch.ones(1)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal((mean(x), 1)).backward()
+            normal(f, (mean(x), 1)).backward()
             optimizer.step()
 
         actual_mean = mean(torch.ones(1))
@@ -28,7 +28,7 @@ class TestPathwise(unittest.TestCase):
         def f(z): return z ** 2
 
         mean = nn.Linear(2, 2)
-        normal = pathwise_gradient.Pathwise(100, torch.distributions.MultivariateNormal)
+        normal = pathwise.Pathwise(100, torch.distributions.MultivariateNormal)
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
@@ -36,7 +36,7 @@ class TestPathwise(unittest.TestCase):
         cov = torch.eye(2)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal((mean(x), cov)).backward(torch.ones(2))
+            normal(f, (mean(x), cov)).backward()
             optimizer.step()
 
         actual_mean = mean(torch.ones(2))

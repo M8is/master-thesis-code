@@ -3,19 +3,18 @@ import torch.nn.functional as F
 
 
 class VAE(torch.nn.Module):
-    def __init__(self, encoder, decoder, probabilistic, param_preprocessor=None):
+    def __init__(self, encoder, decoder, probabilistic):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.probabilistic = probabilistic
-        self.param_preprocessor = param_preprocessor
 
     def forward(self, x, loss_fn):
         params = self.encoder(x)
         if self.training:
-            return self.probabilistic(x, lambda samples: loss_fn(x, self.decoder(samples), *params).mean(), params)
+            return self.probabilistic(lambda samples: loss_fn(x, self.decoder(samples), *params), params)
         else:
-            return self.decoder(self.probabilistic(x, None, *params))
+            return self.decoder(self.probabilistic(None, *params))
 
 
 class Encoder(torch.nn.Module):

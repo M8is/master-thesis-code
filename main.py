@@ -6,7 +6,7 @@ from torch import optim
 
 import models.vae
 import train.vae
-from mc_estimators.pathwise_gradient import Pathwise
+from mc_estimators.pathwise import Pathwise
 
 
 def main():
