@@ -7,7 +7,7 @@ def get_random_cov(size):
 
 
 def doublesided_maxwell(shape):
-    gamma_sample = gamma(1.5, 0.5, shape)
-    binomial_sample = binomial(1, 0.5, shape)
-    dsmaxwell_sample = sqrt(gamma_sample) * (2 * binomial_sample - 1)
+    gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample(shape)
+    binomial_sample = torch.distributions.Binomial(1, 0.5).sample(shape)
+    dsmaxwell_sample = torch.sqrt(gamma_sample) * (2 * binomial_sample - 1)
     return dsmaxwell_sample

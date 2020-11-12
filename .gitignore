@@ -1,4 +1,5 @@
 
+
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,pycharm,vim,git,macos,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,pycharm,vim,git,macos,jupyternotebooks
 
@@ -338,3 +339,7 @@ tags
 [._]*.un~
 
 # End of https://www.toptal.com/developers/gitignore/api/python,linux,pycharm,vim,git,macos,jupyternotebooks
+
+
+# Ignore loaded datasets
+data/
