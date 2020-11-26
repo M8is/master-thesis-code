@@ -6,33 +6,40 @@ from mc_estimators.probabilistic_objective_gradient import Probabilistic
 
 
 class MVD(Probabilistic):
-    def __init__(self, episode_size, output_dim, coupled=False):
-        super().__init__()
-        self.episode_size = episode_size
-        self.output_dim = output_dim
+    def __init__(self, episode_size, distribution, coupled=False):
+        super().__init__(episode_size, distribution)
         self.coupled = coupled
     
-    def get_samples(self):
-        pos_samples = torch.Tensor(weibull(sqrt(2.), (self.episode_size, self.output_dim)))
+    def grad_samples(self, params):
+        self._to_backward(params)
+
+        # TODO: Only supporting MultivariateNormal right now
+        mean, cov = params
+
+        # TODO: Sample for each dimension in mean
+        pos_samples = torch.Tensor(weibull(sqrt(2.), (self.episode_size, len(mean))))
         if self.coupled:
             neg_samples = pos_samples
         else:
-            neg_samples = torch.Tensor(weibull(sqrt(2.), (self.episode_size, self.output_dim)))
-        return pos_samples, neg_samples
+            neg_samples = torch.Tensor(weibull(sqrt(2.), (self.episode_size, len(mean))))
+        samples = torch.cat((pos_samples, -neg_samples))
 
-    def forward_mc(self, objective, params):
-        mean, cov = params
-        pos_samples, neg_samples = self.get_samples()
-        mean_vector = torch.stack([mean] * self.episode_size, dim=0)
-        if self.output_dim > 1:
+        if len(mean) > 1:
             l = torch.cholesky(cov)
-            pos_losses = objective(mean_vector + pos_samples @ l)
-            neg_losses = objective(mean_vector - neg_samples @ l)
-            c = torch.inverse(sqrt(2*pi) * cov)
+            return samples @ l + mean
+        else:
+            std = sqrt(cov)
+            return samples * std + mean
+
+    def backward(self, losses):
+        # TODO: Only supporting MultivariateNormal right now
+        # TODO: Sample for each dimension in mean
+        mean, cov = self._from_forward()
+        pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
+        if len(mean) > 1:
+            c = torch.inverse(sqrt(2 * pi) * cov)
             grad_estimate = ((pos_losses - neg_losses) @ c).mean(dim=0)
         else:
-            pos_losses = objective(mean_vector + pos_samples * cov)
-            neg_losses = objective(mean_vector - neg_samples * cov)
             c = 1 / (sqrt(2 * pi) * cov)
             grad_estimate = ((pos_losses - neg_losses) * c).mean(dim=0)
-        return (grad_estimate.detach() * mean).mean()
+        return mean.backward(grad_estimate)

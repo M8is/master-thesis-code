@@ -9,12 +9,14 @@ class VAE(torch.nn.Module):
         self.decoder = decoder
         self.probabilistic = probabilistic
 
-    def forward(self, x, loss_fn):
+    def forward(self, x):
         params = self.encoder(x)
-        if self.training:
-            return self.probabilistic(lambda samples: loss_fn(x, self.decoder(samples), *params), params)
-        else:
-            return self.decoder(self.probabilistic(None, *params))
+        samples = self.probabilistic.grad_samples(params) if self.training else self.probabilistic.sample(params)
+        replications = self.decoder(samples)
+        return params, replications
+
+    def backward(self, loss):
+        return self.probabilistic.backward(loss)
 
 
 class Encoder(torch.nn.Module):

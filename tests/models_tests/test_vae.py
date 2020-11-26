@@ -43,7 +43,7 @@ class TestVAE(unittest.TestCase):
         vae = train.vae.VAE(vae_model, self.data_holder, torch.optim.Adam)
         vae.train(1)
 
-    @unittest.skip("not yet implemented")
+    @unittest.skip("Not yet working (need to sample loss for each dimension of the mean).")
     def test_vae_mvd(self):
         encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
         decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)

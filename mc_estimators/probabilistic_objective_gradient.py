@@ -1,11 +1,23 @@
-import torch
+class Probabilistic:
+    def __init__(self, episode_size, distribution):
+        self.distribution = distribution
+        self.episode_size = episode_size
+        self.__saved = None
 
+    def _to_backward(self, value):
+        self.__saved = value
 
-class Probabilistic(torch.nn.Module):
-    def forward(self, objective, params):
-        if self.training:
-            return self.forward_mc(objective, params)
-        return self.distribution(*params).sample()
+    def _from_forward(self):
+        value = self.__saved
+        self.__saved = None
+        return value
 
-    def forward_mc(self, objective, params):
+    def sample(self, params, shape=None):
+        dist = self.distribution(*params)
+        return dist.sample() if shape is None else dist.sample(shape)
+
+    def grad_samples(self, params):
+        raise NotImplementedError
+
+    def backward(self, losses):
         raise NotImplementedError
