@@ -343,3 +343,6 @@ tags
 
 # Ignore loaded datasets
 data/
+
+# Ignore generated results
+results/
