@@ -346,3 +346,7 @@ data/
 
 # Ignore generated results
 results/
+
+
+# Ignore vscode files
+.vscode/
