@@ -18,7 +18,8 @@ class TestMVD(unittest.TestCase):
         x = torch.ones(1)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal(f, (mean(x), 1)).backward()
+            samples = normal.grad_samples((mean(x), 1))
+            normal.backward(f(samples))
             optimizer.step()
 
         actual_mean = mean(torch.ones(1))
@@ -36,7 +37,8 @@ class TestMVD(unittest.TestCase):
         cov = torch.eye(2)
         for episode in range(2000):
             optimizer.zero_grad()
-            normal(f, (mean(x), cov)).backward()
+            samples = normal.grad_samples((mean(x), cov))
+            normal.backward(f(samples))
             optimizer.step()
 
         actual_mean = mean(torch.ones(2))

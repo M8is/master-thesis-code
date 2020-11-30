@@ -1,6 +1,7 @@
 import unittest
 
 import torch
+import os
 
 import models.vae
 import train.vae
@@ -25,6 +26,7 @@ class TestVAE(unittest.TestCase):
     def pp(self, mean):
         return mean.squeeze(), .1 * torch.eye(self.latent_dim)
 
+    @unittest.skipIf('SKIP_SLOW_TESTS' in os.environ, "slow")
     def test_vae_pathwise(self):
         encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
         decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
@@ -34,6 +36,7 @@ class TestVAE(unittest.TestCase):
         vae = train.vae.VAE(vae_model, self.data_holder, torch.optim.Adam)
         vae.train(1)
 
+    @unittest.skipIf('SKIP_SLOW_TESTS' in os.environ, "slow")
     def test_vae_reinforce(self):
         encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
         decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
@@ -44,6 +47,7 @@ class TestVAE(unittest.TestCase):
         vae.train(1)
 
     @unittest.skip("Not yet working (need to sample loss for each dimension of the mean).")
+    @unittest.skipIf('SKIP_SLOW_TESTS' in os.environ, "slow")
     def test_vae_mvd(self):
         encoder = models.vae.Encoder(self.data_dim, self.hidden_dim, (self.latent_dim,), post_processor=self.pp)
         decoder = models.vae.Decoder(self.data_dim, self.hidden_dim, self.latent_dim)
