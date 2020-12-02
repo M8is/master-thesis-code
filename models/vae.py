@@ -20,17 +20,15 @@ class VAE(torch.nn.Module):
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dims, post_processor=None):
+    def __init__(self, input_dim, hidden_dim, latent_dims):
         super().__init__()
         self.input_dim = input_dim
-        self.post_processor = post_processor
         self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
         self.fc2 = [torch.nn.Linear(hidden_dim, latent_dim) for latent_dim in latent_dims]
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x.view(-1, self.input_dim)))
-        out = (fc(h1) for fc in self.fc2)
-        return out if self.post_processor is None else self.post_processor(*out)
+        return [fc(h1) for fc in self.fc2]
 
 
 class Decoder(torch.nn.Module):

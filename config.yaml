@@ -1,0 +1,10 @@
+seed: 5986
+results_dir: 'results'
+dataset: 'MNIST'
+mc_estimator: 'Pathwise'
+distribution: 'MultivariateNormal'
+hidden_dim: 100
+latent_dim: 15
+epochs: 1
+sample_size: 1
+learning_rate: 1e-3

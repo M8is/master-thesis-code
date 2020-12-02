@@ -1,9 +1,14 @@
-from mc_estimators.probabilistic_objective_gradient import Probabilistic
+import torch
+from torch.distributions import MultivariateNormal
+
+from .base import MultivariateNormalProbabilistic
 
 
-class Pathwise(Probabilistic):
+class MultivariateNormalPathwise(MultivariateNormalProbabilistic):
     def grad_samples(self, params):
-        return self.distribution(*params).rsample((self.episode_size,))
+        mean, log_cov = params
+        cov = torch.diag(torch.exp(log_cov.squeeze()))
+        return MultivariateNormal(mean, covariance_matrix=cov).rsample((self.sample_size,))
 
     def backward(self, losses):
         return losses.mean().backward()

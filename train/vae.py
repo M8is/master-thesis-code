@@ -1,3 +1,5 @@
+import pickle
+
 import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -10,12 +12,37 @@ class DataHolder:
         self.height = None
         self.width = None
 
-    def load_datasets(self):
-        self.train_holder = DataLoader(
-            datasets.MNIST(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True)
-        self.test_holder = DataLoader(
-            datasets.MNIST(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True)
+    def load_datasets(self, dataset):
+        dataset = dataset.lower()
+        if dataset == 'mnist':
+            self.train_holder = DataLoader(
+                datasets.MNIST(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True)
+            self.test_holder = DataLoader(
+                datasets.MNIST(root='./data', train=False, download=True, transform=transforms.ToTensor()),
+                shuffle=True)
+        else:
+            raise ValueError(f'Invalid dataset `{dataset}`. Currently only supporting `mnist`.')
+
         _, self.height, self.width = self.train_holder.dataset.data.shape
+
+
+class LossHolder:
+    def __init__(self):
+        self.train_loss = []
+        self.test_loss = []
+
+    def add(self, train_loss, test_loss):
+        self.train_loss.append(train_loss)
+        self.test_loss.append(test_loss)
+
+    def save(self, file_path):
+        with open(file_path, "wb") as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(file_path):
+        with open(file_path, "r") as f:
+            return pickle.load(f)
 
 
 class VAE:
@@ -23,16 +50,6 @@ class VAE:
         self.vae_model = vae_model
         self.data_holder = data_holder
         self.optimizer = optimizer(vae_model.parameters(), lr=learning_rate)
-
-    def train(self, epochs):
-        losses = []
-        for epoch in range(epochs):
-            train_loss = self.train_epoch().mean()
-            VAE.print_loss(epoch+1, epochs, train_loss, 'Avg Train')
-            test_loss = self.test_epoch().mean()
-            VAE.print_loss(epoch+1, epochs, test_loss, 'Avg Test')
-            losses.append((train_loss, test_loss))
-        return losses
 
     def train_epoch(self):
         self.vae_model.train()
@@ -44,7 +61,7 @@ class VAE:
             self.vae_model.backward(losses)
             self.optimizer.step()
             train_losses.append(losses.detach().mean())
-        return torch.tensor(train_losses, requires_grad=False)
+        return torch.tensor(train_losses, requires_grad=False).mean()
 
     def test_epoch(self):
         self.vae_model.eval()
@@ -53,11 +70,7 @@ class VAE:
             params, x_preds = self.vae_model(x_batch)
             losses = self.__loss_func(x_batch, x_preds, *params)
             test_losses.append(losses.detach().mean())
-        return torch.tensor(test_losses, requires_grad=False)
-
-    @staticmethod
-    def print_loss(epoch, epochs, loss, name):
-        print(f"===> Epoch: {epoch}/{epochs}, {name} Loss: {loss:.3f}")
+        return torch.tensor(test_losses, requires_grad=False).mean()
 
     def __loss_func(self, x, x_pred, mu_z, log_sigma_z):
         """
