@@ -16,7 +16,7 @@ class TestMultivariateNormalMVD(unittest.TestCase):
 
         optimizer = torch.optim.SGD(mean.parameters(), 1e-2)
 
-        x = torch.ones(2)
+        x = torch.ones(2).unsqueeze(0)
         for episode in range(2000):
             optimizer.zero_grad()
             samples = normal.grad_samples((mean(x), cov(x)))

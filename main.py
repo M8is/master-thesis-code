@@ -25,14 +25,14 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
 
     # Create model
     estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size)
-    encoder = models.vae.Encoder([data_holder.height, data_holder.width], hidden_dim, [latent_dim, latent_dim])
-    decoder = models.vae.Decoder([data_holder.height, data_holder.width], hidden_dim, latent_dim)
-    vae_network = models.vae.VAE(encoder, decoder, estimator(sample_size, torch.distributions.Normal))
+    encoder = models.vae.Encoder(data_holder.height * data_holder.width, hidden_dim, (latent_dim, latent_dim))
+    decoder = models.vae.Decoder(data_holder.height * data_holder.width, hidden_dim, latent_dim)
+    vae_network = models.vae.VAE(encoder, decoder, estimator)
 
     # Train
-    vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam(encoder.parameters(), lr=learning_rate))
+    vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
     losses = train.vae.LossHolder()
-    for epoch in range(epochs):
+    for epoch in range(1, epochs + 1):
         train_loss = vae.train_epoch()
         test_loss = vae.test_epoch()
         print(f"===> Epoch: {epoch}/{epochs}")
@@ -46,6 +46,8 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
-    parser.add_argument('CONFIG', default='configs.yaml', help='path to configs file')
+    parser.add_argument('-c', default='config.yaml', help='path to config file')
     args = parser.parse_args()
-    main(**yaml.safe_load(args['CONFIG']))
+    with open(args.c, 'r') as f:
+        config = yaml.safe_load(f)
+    main(**config)

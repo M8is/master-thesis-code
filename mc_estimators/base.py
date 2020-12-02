@@ -30,7 +30,7 @@ class MultivariateNormalProbabilistic(Probabilistic):
     def sample(params, size=1):
         mean, log_cov = params
         cov = torch.diag(torch.exp(log_cov.squeeze()))
-        return torch.distributions.MultivariateNormal(mean, cov).sample((size,))
+        return torch.distributions.MultivariateNormal(mean, cov).sample((size,)).squeeze(1)
 
     def grad_samples(self, params):
         raise NotImplementedError

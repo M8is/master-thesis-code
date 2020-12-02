@@ -8,7 +8,7 @@ class MultivariateNormalReinforce(MultivariateNormalProbabilistic):
     def grad_samples(self, params):
         mean, log_cov = params
         cov = torch.diag(torch.exp(log_cov.squeeze()))
-        samples = MultivariateNormal(mean, cov).sample((self.sample_size,))
+        samples = MultivariateNormal(mean, cov).sample((self.sample_size,)).squeeze(1)
         self._to_backward((mean, cov, samples))
         return samples
 

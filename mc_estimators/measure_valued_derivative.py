@@ -27,17 +27,17 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
 
     def backward(self, losses):
         mean, cov = self._from_forward()
-        mean_grad = self.__mean_grad(cov, losses)
-        cov_grad = self.__cov_grad(mean, cov, losses)
-        return mean.backward(mean_grad), cov.backward(cov_grad)
+        mean_losses, cov_losses = torch.split(losses, len(losses) // 2)
+        mean_grad = self.__mean_grad(cov, mean_losses)
+        cov_grad = self.__cov_grad(mean, cov, cov_losses)
+        return mean.backward(gradient=mean_grad, retain_graph=True), cov.backward(gradient=cov_grad)
 
     def __mean_grad(self, cov, losses):
         pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
-        pos_losses = pos_losses.view(self.sample_size, -1).sum(dim=0)
-        neg_losses = neg_losses.view(self.sample_size, -1).sum(dim=0)
+        pos_losses = pos_losses.view(1, -1, cov.size(0))
+        neg_losses = neg_losses.view(1, -1, cov.size(0))
         c = torch.inverse(sqrt(2 * pi) * cov)
-        grad_estimate = ((pos_losses - neg_losses) @ c) / self.sample_size
-        return grad_estimate.unsqueeze(0)
+        return ((pos_losses - neg_losses).sum(dim=1) @ c) / pos_losses.size(0)
 
     def __cov_grad(self, mean, cov, losses):
         # TODO: implement this
