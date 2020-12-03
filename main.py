@@ -46,7 +46,7 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
-    parser.add_argument('-c', default='config.yaml', help='path to config file')
+    parser.add_argument('-c', default=os.path.join('configs', 'default.yaml'), help='path to config file')
     args = parser.parse_args()
     with open(args.c, 'r') as f:
         config = yaml.safe_load(f)

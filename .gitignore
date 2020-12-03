@@ -1,5 +1,3 @@
-
-
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,pycharm,vim,git,macos,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,pycharm,vim,git,macos,jupyternotebooks
 
@@ -345,8 +343,11 @@ tags
 data/
 
 # Ignore generated results
-results/
+results*/
 
+# Ignore configs
+config/*.yaml
+!config/default.yaml
 
 # Ignore vscode files
 .vscode/
