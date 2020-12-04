@@ -1,5 +1,5 @@
 seed: 5986
-results_dir: 'results_pathwise'
+results_dir: 'results'
 dataset: 'MNIST'
 mc_estimator: 'Pathwise'
 distribution: 'MultivariateNormal'

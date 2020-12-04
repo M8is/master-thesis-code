@@ -8,7 +8,7 @@ from mc_estimators import pathwise
 
 class TestMultivariateNormalPathwise(unittest.TestCase):
     def test_squared_to_zero_2d(self):
-        def f(z): return z ** 2
+        def f(z): return (z - 5) ** 2
 
         mean = nn.Linear(2, 2)
         cov = nn.Linear(2, 2)
@@ -23,8 +23,9 @@ class TestMultivariateNormalPathwise(unittest.TestCase):
             normal.backward(f(samples))
             optimizer.step()
 
-        actual_mean = mean(torch.ones(2))
-        torch.allclose(actual_mean, torch.tensor([0., 0.]), atol=1e-2)
+        actual_mean = mean(x)
+        expected_mean = 5 * torch.ones(2)
+        assert torch.allclose(actual_mean, expected_mean, atol=5e-2), f"Diff is {actual_mean - expected_mean}"
 
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
     # Train
     vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
     losses = train.vae.LossHolder()
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, epochs+1):
         train_loss = vae.train_epoch()
         test_loss = vae.test_epoch()
         print(f"===> Epoch: {epoch}/{epochs}")

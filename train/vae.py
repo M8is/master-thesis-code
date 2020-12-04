@@ -6,22 +6,25 @@ from torchvision import datasets, transforms
 
 
 class DataHolder:
+    _datasets = {
+        'mnist': datasets.MNIST
+    }
+
     def __init__(self):
         self.train_holder = None
         self.test_holder = None
         self.height = None
         self.width = None
 
-    def load_datasets(self, dataset):
-        dataset = dataset.lower()
-        if dataset == 'mnist':
-            self.train_holder = DataLoader(
-                datasets.MNIST(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True)
-            self.test_holder = DataLoader(
-                datasets.MNIST(root='./data', train=False, download=True, transform=transforms.ToTensor()),
-                shuffle=True)
-        else:
-            raise ValueError(f'Invalid dataset `{dataset}`. Currently only supporting `mnist`.')
+    def load_datasets(self, dataset_tag):
+        if dataset_tag.lower() not in self._datasets:
+            raise ValueError(f'Invalid dataset `{dataset_tag}`. Allowed values: {list(self._datasets.keys())}.')
+        dataset = self._datasets[dataset_tag.lower()]
+
+        self.train_holder = DataLoader(
+            dataset(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True)
+        self.test_holder = DataLoader(
+            dataset(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True)
 
         _, self.height, self.width = self.train_holder.dataset.data.shape
 
@@ -46,7 +49,7 @@ class LossHolder:
 
 
 class VAE:
-    def __init__(self, vae_model, data_holder, optimizer, learning_rate=1e-2):
+    def __init__(self, vae_model, data_holder, optimizer, learning_rate):
         self.vae_model = vae_model
         self.data_holder = data_holder
         self.optimizer = optimizer(vae_model.parameters(), lr=learning_rate)
