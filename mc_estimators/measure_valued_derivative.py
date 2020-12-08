@@ -11,24 +11,11 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
         self.coupled = coupled
 
     def grad_samples(self, params):
-        mean, log_std = params
-        std = torch.exp(log_std)
+        mean, std = params
         self._to_backward((mean, std))
-
-        output_size = mean.size(-1)
-
-        # Sample for mean gradient.
-        pos_samples = self.__sample_weibull(output_size)
-        neg_samples = -pos_samples if self.coupled else -self.__sample_weibull(output_size)
-        mean_samples = torch.cat((pos_samples, neg_samples))
-
-        # Sample for std gradient.
-        pos_samples = self.__sample_standard_doublesided_maxwell(output_size)
-        neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if self.coupled \
-            else self.__sample_standard_normal(output_size)
-        std_samples = torch.cat((pos_samples, neg_samples))
-
-        return torch.diag_embed(torch.cat((mean_samples, std_samples))).view(-1, mean.size(-1)) @ std.T + mean
+        mean_samples = self.__mean_grad_samples(mean, std)
+        cov_samples = self.__cov_grad_samples(std)
+        return torch.cat((mean_samples, cov_samples))
 
     def backward(self, losses):
         with torch.no_grad():
@@ -37,6 +24,14 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
             mean_grad = self.__mean_grad(std, mean_losses)
             std_grad = self.__std_grad(std, std_losses)
         return mean.backward(gradient=mean_grad, retain_graph=True), std.backward(gradient=std_grad)
+
+    def __mean_grad_samples(self, mean, std):
+        output_size = mean.size(-1)
+        pos_samples = self.__sample_weibull(output_size)
+        neg_samples = -pos_samples if self.coupled else -self.__sample_weibull(output_size)
+        mean_samples = torch.cat((pos_samples, neg_samples))
+        mean_samples = torch.diag_embed(mean_samples).view(-1, mean.size(-1)) @ std.T + mean
+        return mean_samples
 
     @staticmethod
     def __mean_grad(std, losses):
@@ -47,14 +42,23 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
         delta = pos_losses - neg_losses
         return delta.mean(dim=1) * c
 
+    def __cov_grad_samples(self, std):
+        output_size = std.size(-1)
+        pos_samples = self.__sample_standard_doublesided_maxwell(output_size)
+        neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if self.coupled \
+            else self.__sample_standard_normal(output_size)
+        cov_samples = torch.cat((pos_samples, neg_samples))
+        cov_samples = torch.diag_embed(cov_samples).view(-1, output_size)
+        return cov_samples
+
     @staticmethod
     def __std_grad(std, losses):
         pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
         pos_losses = pos_losses.view(1, -1, std.size(-1))
         neg_losses = neg_losses.view(1, -1, std.size(-1))
-        c = 1. / std
+        c = torch.diag((1. / std).squeeze())
         delta = pos_losses - neg_losses
-        return delta.mean(dim=1) * c
+        return delta.mean(dim=1) @ c
 
     def __sample_weibull(self, size):
         return Weibull(sqrt(2.), concentration=2.).sample((self.sample_size, size))

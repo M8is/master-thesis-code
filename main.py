@@ -9,10 +9,11 @@ import yaml
 import mc_estimators
 import models.vae
 import train.vae
+from train.utils import DataHolder, LossHolder
 
 
 def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size, learning_rate, mc_estimator,
-         distribution):
+         distribution, batch_size):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -20,8 +21,8 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
         os.makedirs(results_dir)
 
     # Load data
-    data_holder = train.vae.DataHolder()
-    data_holder.load_datasets(dataset)
+    data_holder = DataHolder()
+    data_holder.load_datasets(dataset, batch_size)
 
     # Create model
     estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size)
@@ -31,13 +32,13 @@ def main(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size
 
     # Train
     vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
-    losses = train.vae.LossHolder()
-    for epoch in range(1, epochs+1):
+    losses = LossHolder()
+    for epoch in range(1, epochs + 1):
         train_loss = vae.train_epoch()
         test_loss = vae.test_epoch()
         print(f"===> Epoch: {epoch}/{epochs}")
-        print(f"     Train Loss: {train_loss:.3f}")
-        print(f"     Test Loss: {test_loss:.3f}", flush=True)
+        print(f"     Train Loss: {train_loss.mean():.3f}")
+        print(f"     Test Loss: {test_loss.mean():.3f}", flush=True)
         losses.add(train_loss, test_loss)
         file_name = os.path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
         torch.save(vae_network, file_name)

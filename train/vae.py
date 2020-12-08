@@ -1,32 +1,4 @@
-import pickle
-
 import torch
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-
-
-class DataHolder:
-    _datasets = {
-        'mnist': datasets.MNIST
-    }
-
-    def __init__(self):
-        self.train_holder = None
-        self.test_holder = None
-        self.height = None
-        self.width = None
-
-    def load_datasets(self, dataset_tag):
-        if dataset_tag.lower() not in self._datasets:
-            raise ValueError(f'Invalid dataset `{dataset_tag}`. Allowed values: {list(self._datasets.keys())}.')
-        dataset = self._datasets[dataset_tag.lower()]
-
-        self.train_holder = DataLoader(
-            dataset(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True)
-        self.test_holder = DataLoader(
-            dataset(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True)
-
-        _, self.height, self.width = self.train_holder.dataset.data.shape
 
 
 class LossHolder:
@@ -38,14 +10,11 @@ class LossHolder:
         self.train_loss.append(train_loss)
         self.test_loss.append(test_loss)
 
-    def save(self, file_path):
-        with open(file_path, "wb") as f:
-            pickle.dump(self, f)
-
-    @staticmethod
-    def load(file_path):
-        with open(file_path, "r") as f:
-            return pickle.load(f)
+    def as_numpy(self):
+        with torch.no_grad():
+            train_loss = torch.stack(self.train_loss)
+            test_loss = torch.stack(self.test_loss)
+            return train_loss.numpy(), test_loss.numpy()
 
 
 class VAE:
@@ -64,7 +33,7 @@ class VAE:
             self.vae_model.backward(losses)
             self.optimizer.step()
             train_losses.append(losses.detach().mean())
-        return torch.tensor(train_losses, requires_grad=False).mean()
+        return torch.tensor(train_losses, requires_grad=False)
 
     def test_epoch(self):
         self.vae_model.eval()
