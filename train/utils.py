@@ -43,7 +43,7 @@ class LossHolder:
 
     def save(self, file_path):
         with open(file_path, 'wb') as f:
-            pickle.dump(self, f)
+            pickle.dump((self.train_loss, self.test_loss), f)
 
     def as_numpy(self) -> np.array:
         with torch.no_grad():
@@ -54,4 +54,8 @@ class LossHolder:
     @staticmethod
     def load(file_path: str) -> 'LossHolder':
         with open(file_path, 'rb') as f:
-            return pickle.load(f)
+            train_loss, test_loss = pickle.load(f)
+        result = LossHolder()
+        result.train_loss = train_loss
+        result.test_loss = test_loss
+        return result

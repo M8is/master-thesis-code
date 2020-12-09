@@ -9,63 +9,56 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
     def __init__(self, sample_size, coupled=False):
         super().__init__(sample_size)
         self.coupled = coupled
+        self.num_params = 2  # Number of params used by this distribution (mean & log_std).
 
     def grad_samples(self, params):
-        mean, std = params
+        mean, log_std = params
+        std = torch.exp(2 * log_std)
         self._to_backward((mean, std))
-        mean_samples = self.__mean_grad_samples(mean, std)
-        cov_samples = self.__cov_grad_samples(std)
+        mean_samples = self.__mean_samples(mean, std)
+        cov_samples = self.__cov_samples(std)
         return torch.cat((mean_samples, cov_samples))
 
     def backward(self, losses):
+        mean, std = self._from_forward()
+        # Second dimension in the shape is 2, because we sampled from two distributions (positive & negative).
+        mean_losses, std_losses = torch.split(losses, len(losses) // 2)
         with torch.no_grad():
-            mean, std = self._from_forward()
-            mean_losses, std_losses = torch.split(losses, len(losses) // 2)
             mean_grad = self.__mean_grad(std, mean_losses)
             std_grad = self.__std_grad(std, std_losses)
-        return mean.backward(gradient=mean_grad, retain_graph=True), std.backward(gradient=std_grad)
+        losses.mean().backward(retain_graph=True)
+        mean.backward(gradient=mean_grad, retain_graph=True)
+        std.backward(gradient=std_grad)
 
-    def __mean_grad_samples(self, mean, std):
-        output_size = mean.size(-1)
-        pos_samples = self.__sample_weibull(output_size)
-        neg_samples = -pos_samples if self.coupled else -self.__sample_weibull(output_size)
-        mean_samples = torch.cat((pos_samples, neg_samples))
-        mean_samples = torch.diag_embed(mean_samples).view(-1, mean.size(-1)) @ std.T + mean
-        return mean_samples
+    def __mean_samples(self, mean, std):
+        pos_samples = self.__sample_weibull(mean.shape)
+        neg_samples = pos_samples if self.coupled else self.__sample_weibull(mean.shape)
+        samples = torch.diag_embed(torch.cat((pos_samples, -neg_samples)) * std).view([-1] + list(mean.shape))
+        return samples + mean
 
-    @staticmethod
-    def __mean_grad(std, losses):
-        pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
-        pos_losses = pos_losses.view(1, -1, std.size(-1))
-        neg_losses = neg_losses.view(1, -1, std.size(-1))
-        c = 1. / (sqrt(2 * pi) * std.squeeze())
-        delta = pos_losses - neg_losses
-        return delta.mean(dim=1) * c
-
-    def __cov_grad_samples(self, std):
-        output_size = std.size(-1)
-        pos_samples = self.__sample_standard_doublesided_maxwell(output_size)
+    def __cov_samples(self, std):
+        pos_samples = self.__sample_standard_doublesided_maxwell(std.shape)
         neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if self.coupled \
-            else self.__sample_standard_normal(output_size)
-        cov_samples = torch.cat((pos_samples, neg_samples))
-        cov_samples = torch.diag_embed(cov_samples).view(-1, output_size)
-        return cov_samples
+            else self.__sample_standard_normal(std.shape)
+        return torch.diag_embed(torch.cat((pos_samples, neg_samples))).view([-1] + list(std.shape))
 
-    @staticmethod
-    def __std_grad(std, losses):
+    def __mean_grad(self, std, losses):
+        return self.__grad(1. / (sqrt(2 * pi) * std), losses)
+
+    def __std_grad(self, std, losses):
+        return self.__grad(1. / std, losses)
+
+    def __grad(self, c, losses):
         pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
-        pos_losses = pos_losses.view(1, -1, std.size(-1))
-        neg_losses = neg_losses.view(1, -1, std.size(-1))
-        c = torch.diag((1. / std).squeeze())
-        delta = pos_losses - neg_losses
-        return delta.mean(dim=1) @ c
+        delta = (pos_losses - neg_losses).view([-1] + list(c.shape))
+        return (c * delta).mean(dim=0)
 
-    def __sample_weibull(self, size):
-        return Weibull(sqrt(2.), concentration=2.).sample((self.sample_size, size))
+    def __sample_weibull(self, shape):
+        return Weibull(sqrt(2.), concentration=2.).sample([self.sample_size] + list(shape))
 
-    def __sample_standard_doublesided_maxwell(self, size):
-        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((self.sample_size, size))
-        binomial_sample = torch.distributions.Binomial(1, 0.5).sample((self.sample_size, size))
+    def __sample_standard_doublesided_maxwell(self, shape):
+        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample([self.sample_size] + list(shape))
+        binomial_sample = torch.distributions.Binomial(1, 0.5).sample([self.sample_size] + list(shape))
         dsmaxwell_sample = torch.sqrt(gamma_sample) * (2 * binomial_sample - 1)
         return dsmaxwell_sample
 
@@ -75,7 +68,7 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
         Adapted from https://github.com/deepmind/mc_gradients
         Generate Gaussian variates from Double-sided Maxwell variates.
 
-        Useful for coupling samples from Gaussian and double_sided Maxwell dist.
+        Useful for coupling samples from Gaussian and Double-sided Maxwell dist.
         1. Generate ds-maxwell variates: dsM ~ dsMaxwell(0,1)
         2. Generate uniform variates: u ~ Unif(0,1)
         3. multiply y = u * dsM
@@ -87,9 +80,9 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
         Returns:
             Tensor of Gaussian variates with the same shape as the input.
         """
-        uniform_rvs = torch.distributions.uniform.Uniform(low=0., high=1.).sample(std_dsmaxwell_samples.size())
+        uniform_rvs = torch.distributions.uniform.Uniform(low=0., high=1.).sample(std_dsmaxwell_samples.shape)
         return uniform_rvs * std_dsmaxwell_samples
 
-    def __sample_standard_normal(self, size):
-        standard_normal = torch.distributions.MultivariateNormal(torch.zeros(size), torch.eye(size))
-        return standard_normal.sample((self.sample_size,))
+    def __sample_standard_normal(self, shape):
+        standard_normal = torch.distributions.Normal(0, 1)
+        return standard_normal.sample([self.sample_size] + list(shape))

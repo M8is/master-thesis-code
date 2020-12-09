@@ -343,10 +343,10 @@ tags
 data/
 
 # Ignore generated results
-results*/
+results/
 
 # Ignore configs
-config/*.yaml
+config/**/*.yaml
 !config/default.yaml
 
 # Ignore vscode files

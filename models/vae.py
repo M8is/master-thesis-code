@@ -24,22 +24,21 @@ class Encoder(torch.nn.Module):
         super().__init__()
         self.input_dim = input_dim
         self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = [torch.nn.Linear(hidden_dim, latent_dim) for latent_dim in latent_dims]
+        self.fc2 = [torch.nn.Linear(hidden_dim, latent_dim) for latent_dim in latent_dims]
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x.view(-1, self.input_dim)))
-        h2 = F.relu(self.fc2(h1))
-        return [fc(h2) for fc in self.fc3]
+        return [fc(h1) for fc in self.fc2]
 
 
 class Decoder(torch.nn.Module):
     def __init__(self, output_dim, hidden_dim, latent_dim):
         super().__init__()
         self.fc1 = torch.nn.Linear(latent_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, output_dim)
+        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = torch.nn.Linear(hidden_dim, output_dim)
 
     def forward(self, z):
         h1 = F.relu(self.fc1(z))
-        h2 = torch.sigmoid(self.fc2(h1))
-        return h2
+        h2 = F.relu(self.fc2(h1))
+        return torch.sigmoid(self.fc3(h2))

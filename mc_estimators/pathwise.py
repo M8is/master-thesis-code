@@ -6,9 +6,9 @@ from .base import MultivariateNormalProbabilistic
 
 class MultivariateNormalPathwise(MultivariateNormalProbabilistic):
     def grad_samples(self, params):
-        mean, std = params
-        cov = torch.diagflat(std ** 2 + 1e-10)
-        return MultivariateNormal(mean, cov).rsample((self.sample_size,)).squeeze(1)
+        mean, log_std = params
+        cov = torch.diag_embed(torch.exp(2 * log_std))
+        return MultivariateNormal(mean, cov).rsample((self.sample_size,))
 
     def backward(self, losses):
-        return losses.mean().backward()
+        losses.mean().backward()
