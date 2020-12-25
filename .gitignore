@@ -349,5 +349,8 @@ results/
 config/**/*.yaml
 !config/default.yaml
 
+# Ignore plots
+plots/
+
 # Ignore vscode files
 .vscode/

@@ -9,11 +9,10 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
     def __init__(self, sample_size, coupled=False):
         super().__init__(sample_size)
         self.coupled = coupled
-        self.num_params = 2  # Number of params used by this distribution (mean & log_std).
 
     def grad_samples(self, params):
         mean, log_std = params
-        std = torch.exp(2 * log_std)
+        std = torch.exp(log_std)
         self._to_backward((mean, std))
         mean_samples = self.__mean_samples(mean, std)
         cov_samples = self.__cov_samples(std)
@@ -21,7 +20,6 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
 
     def backward(self, losses):
         mean, std = self._from_forward()
-        # Second dimension in the shape is 2, because we sampled from two distributions (positive & negative).
         mean_losses, std_losses = torch.split(losses, len(losses) // 2)
         with torch.no_grad():
             mean_grad = self.__mean_grad(std, mean_losses)
@@ -51,7 +49,7 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
     def __grad(self, c, losses):
         pos_losses, neg_losses = torch.split(losses, len(losses) // 2)
         delta = (pos_losses - neg_losses).view([-1] + list(c.shape))
-        return (c * delta).mean(dim=0)
+        return c * delta.mean(dim=0)
 
     def __sample_weibull(self, shape):
         return Weibull(sqrt(2.), concentration=2.).sample([self.sample_size] + list(shape))

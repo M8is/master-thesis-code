@@ -15,4 +15,5 @@ class MultivariateNormalReinforce(MultivariateNormalProbabilistic):
     def backward(self, losses):
         mean, cov, samples = self._from_forward()
         log_probs = MultivariateNormal(mean, cov).log_prob(samples)
-        (losses * -log_probs).mean().backward()
+        losses.mean().backward(retain_graph=True)
+        (losses.detach() * log_probs).mean(dim=0).sum().backward()

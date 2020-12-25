@@ -24,24 +24,31 @@ class VAE:
         self.optimizer = optimizer(vae_model.parameters(), lr=learning_rate)
 
     def train_epoch(self):
-        self.vae_model.train()
         train_losses = []
+        test_losses = []
         for batch_id, (x_batch, _) in enumerate(self.data_holder.train_holder):
+            self.vae_model.train()
             self.optimizer.zero_grad()
             params, x_preds = self.vae_model(x_batch)
             losses = self.__loss_func(x_batch, x_preds, *params)
             self.vae_model.backward(losses)
             self.optimizer.step()
             train_losses.append(losses.detach().mean())
-        return torch.tensor(train_losses, requires_grad=False)
+            test_losses.append(self.test_epoch().mean())
+        return torch.tensor(train_losses, requires_grad=False), torch.tensor(test_losses, requires_grad=False)
 
     def test_epoch(self):
         self.vae_model.eval()
         test_losses = []
-        for batch_id, (x_batch, _) in enumerate(self.data_holder.test_holder):
+        i = 0
+        for x_batch, _ in self.data_holder.test_holder:
             params, x_preds = self.vae_model(x_batch)
             losses = self.__loss_func(x_batch, x_preds, *params)
             test_losses.append(losses.detach().mean())
+
+            i += 1
+            if i >= 100:
+                break
         return torch.tensor(test_losses, requires_grad=False)
 
     def __loss_func(self, x, x_pred, mu_z, log_sigma_z):
