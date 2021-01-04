@@ -32,22 +32,25 @@ def load_losses_per_estimator(configs):
         os.makedirs(plot_dir)
 
     for config in configs:
-        loss_file_path = os.path.join(config['results_dir'], 'loss.pkl')
         try:
-            losses = LossHolder.load(loss_file_path)
-        except FileNotFoundError:
-            print(f"File '{loss_file_path}' does not exist.")
+            estimator, losses = load_losses(**config)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
             continue
 
-        estimator_tag = config['mc_estimator']
-        sample_size = config['sample_size']
-        estimator = f'{estimator_tag} {sample_size} sample(s)'
         if estimator not in losses_per_estimator:
             losses_per_estimator[estimator] = [losses]
         else:
             losses_per_estimator[estimator].append(losses)
 
     return losses_per_estimator
+
+
+def load_losses(results_dir, mc_estimator, sample_size, **_):
+    estimator = f'{mc_estimator} {sample_size} sample(s)'
+    loss_file_path = os.path.join(results_dir, 'loss.pkl')
+    return estimator, LossHolder.load(loss_file_path)
 
 
 def plot(estimator, x_label, mean, std):
