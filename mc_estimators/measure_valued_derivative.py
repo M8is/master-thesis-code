@@ -13,18 +13,16 @@ class MultivariateNormalMVD(MultivariateNormalProbabilistic):
     def grad_samples(self, params):
         mean, log_std = params
         std = torch.exp(log_std)
-        self._to_backward((mean, std))
         mean_samples = self.__mean_samples(mean, std)
         cov_samples = self.__cov_samples(std)
         return torch.cat((mean_samples, cov_samples))
 
-    def backward(self, losses):
-        mean, std = self._from_forward()
-        mean_losses, std_losses = torch.split(losses, len(losses) // 2)
+    def backward(self, params, losses):
+        mean, std = params
         with torch.no_grad():
+            mean_losses, std_losses = torch.split(losses, len(losses) // 2)
             mean_grad = self.__mean_grad(std, mean_losses)
             std_grad = self.__std_grad(std, std_losses)
-        losses.mean().backward(retain_graph=True)
         mean.backward(gradient=mean_grad, retain_graph=True)
         std.backward(gradient=std_grad)
 

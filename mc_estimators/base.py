@@ -2,38 +2,39 @@ import torch
 
 
 class Probabilistic:
-    def __init__(self, sample_size, *_, **__):
+    def __init__(self, sample_size):
         self.sample_size = sample_size
-        self.__saved = None
-
-    def _to_backward(self, value):
-        self.__saved = value
-
-    def _from_forward(self):
-        value = self.__saved
-        self.__saved = None
-        return value
 
     @staticmethod
     def sample(params, size=1):
         raise NotImplementedError
 
+    @staticmethod
+    def kl(params):
+        raise NotImplementedError
+
     def grad_samples(self, params):
         raise NotImplementedError
 
-    def backward(self, losses):
+    def backward(self, params, losses):
         raise NotImplementedError
 
 
 class MultivariateNormalProbabilistic(Probabilistic):
     @staticmethod
-    def sample(params, size=1):
+    def sample(params, size=1, with_grad=False):
         mean, log_std = params
-        cov = torch.diag_embed(torch.exp(2 * log_std))
-        return torch.distributions.MultivariateNormal(mean, cov).sample((size,))
+        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad)
+        return mean + eps * torch.exp(log_std)
+
+    @staticmethod
+    def kl(params):
+        mean, log_std = params
+        log_cov = 2 * log_std
+        return 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov).sum(dim=1)
 
     def grad_samples(self, params):
         raise NotImplementedError
 
-    def backward(self, losses):
+    def backward(self, params, losses):
         raise NotImplementedError

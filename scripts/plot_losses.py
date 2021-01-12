@@ -9,13 +9,8 @@ import yaml
 from train.utils import LossHolder
 
 
-def main(configs):
+def plot_losses(configs):
     losses_per_estimator = load_losses_per_estimator(configs)
-    for estimator, loss_holders in losses_per_estimator.items():
-        train_losses = np.stack([lh.train() for lh in loss_holders if len(lh.train()) == len(loss_holders[0].train())])
-        plot(estimator, 'Train Loss', train_losses.mean(axis=0).flatten(), train_losses.std(axis=0).flatten())
-    plt.savefig(os.path.join('plots', 'train.svg'))
-    plt.clf()
 
     for estimator, loss_holders in losses_per_estimator.items():
         test_losses = np.stack([lh.test() for lh in loss_holders if len(lh.test()) == len(loss_holders[0].test())])
@@ -57,7 +52,7 @@ def plot(estimator, x_label, mean, std):
     print(f"Plotting '{estimator}'.")
     x = range(len(mean))
     plt.yscale('log')
-    plt.xlim(0, 500)
+    #plt.xlim(0, 500)
     plt.xlabel(x_label)
     plt.plot(mean, '-', linewidth=.25, alpha=.8, label=estimator)
     plt.fill_between(x, mean - std, mean + std, alpha=0.3)
@@ -85,4 +80,4 @@ if __name__ == '__main__':
             traceback.print_exc()
             continue
 
-    main(loaded_configs)
+    plot_losses(loaded_configs)

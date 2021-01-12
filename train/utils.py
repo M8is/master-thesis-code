@@ -17,16 +17,16 @@ class DataHolder:
         self.height = None
         self.width = None
 
-    def load_datasets(self, dataset_tag, batch_size):
+    def load_datasets(self, dataset_tag, batch_size, shuffle=True):
         if dataset_tag.lower() not in self._datasets:
             raise ValueError(f'Invalid dataset `{dataset_tag}`. Allowed values: {list(self._datasets.keys())}.')
         dataset = self._datasets[dataset_tag.lower()]
 
         self.train_holder = DataLoader(
-            dataset(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True,
+            dataset(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=shuffle,
             batch_size=batch_size)
         self.test_holder = DataLoader(
-            dataset(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True,
+            dataset(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=shuffle,
             batch_size=batch_size)
 
         _, self.height, self.width = self.train_holder.dataset.data.shape
@@ -34,20 +34,14 @@ class DataHolder:
 
 class LossHolder:
     def __init__(self):
-        self.train_loss = []
         self.test_loss = []
 
-    def add(self, train_loss, test_loss):
-        self.train_loss.append(train_loss)
+    def add(self, test_loss):
         self.test_loss.append(test_loss)
 
     def save(self, file_path):
         with open(file_path, 'wb') as f:
-            pickle.dump((self.train_loss, self.test_loss), f)
-
-    def train(self) -> np.array:
-        with torch.no_grad():
-            return torch.stack(self.train_loss).numpy()
+            pickle.dump(self.test_loss, f)
 
     def test(self) -> np.array:
         with torch.no_grad():
@@ -56,8 +50,7 @@ class LossHolder:
     @staticmethod
     def load(file_path: str) -> 'LossHolder':
         with open(file_path, 'rb') as f:
-            train_loss, test_loss = pickle.load(f)
+            test_loss = pickle.load(f)
         result = LossHolder()
-        result.train_loss = train_loss
         result.test_loss = test_loss
         return result
