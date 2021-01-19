@@ -19,7 +19,7 @@ class VAE(torch.nn.Module):
         # Set decoder gradients. Also sets encoder gradients, if samples where not detached.
         losses.mean().backward(retain_graph=True)
         # Set encoder gradients.
-        self.probabilistic.kl(params).mean().backward()
+        self.probabilistic.kl(params).mean().backward(retain_graph=True)
         self.probabilistic.backward(params, losses.detach())
 
 
