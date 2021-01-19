@@ -1,0 +1,11 @@
+seed: 2930489
+results_dir: 'results/pathwise/'
+dataset: 'MNIST'
+batch_size: 64
+mc_estimator: 'Pathwise'
+distribution: 'MultivariateNormal'
+hidden_dim: 200
+latent_dim: 20
+epochs: 10
+sample_size: 1
+learning_rate: 0.001
