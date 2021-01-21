@@ -1,3 +1,4 @@
+import os
 import pickle
 
 import numpy as np
@@ -33,24 +34,23 @@ class DataHolder:
 
 
 class LossHolder:
-    def __init__(self):
-        self.test_loss = []
+    def __init__(self, output_dir: str, train: bool):
+        prefix = 'train' if train else 'test'
+        self.__file_path = os.path.join(output_dir, f'{prefix}_loss.pkl')
 
-    def add(self, test_loss):
-        self.test_loss.append(test_loss)
+        if os.path.exists(self.__file_path):
+            with open(self.__file_path, 'rb') as f:
+                self.losses = pickle.load(f)
+        else:
+            self.losses = []
 
-    def save(self, file_path):
-        with open(file_path, 'wb') as f:
-            pickle.dump(self.test_loss, f)
+    def add(self, loss):
+        self.losses.append(loss)
 
-    def test(self) -> np.array:
+    def save(self):
+        with open(self.__file_path, 'wb') as f:
+            pickle.dump(self.losses, f)
+
+    def numpy(self) -> np.array:
         with torch.no_grad():
-            return torch.stack(self.test_loss).numpy()
-
-    @staticmethod
-    def load(file_path: str) -> 'LossHolder':
-        with open(file_path, 'rb') as f:
-            test_loss = pickle.load(f)
-        result = LossHolder()
-        result.test_loss = test_loss
-        return result
+            return torch.stack(self.losses).numpy()

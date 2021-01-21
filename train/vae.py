@@ -24,6 +24,7 @@ class VAE:
         self.optimizer = optimizer(vae_model.parameters(), lr=learning_rate)
 
     def train_epoch(self):
+        train_losses = []
         test_losses = []
         for batch_id, (x_batch, _) in enumerate(self.data_holder.train_holder):
             self.vae_model.train()
@@ -32,8 +33,9 @@ class VAE:
             self.optimizer.zero_grad()
             self.vae_model.backward(losses, params)
             self.optimizer.step()
+            train_losses.append(losses + self.vae_model.probabilistic.kl(params))
             test_losses.append(self.test_epoch())
-        return torch.tensor(test_losses, requires_grad=False)
+        return torch.cat(train_losses), torch.cat(test_losses)
 
     def test_epoch(self):
         with torch.no_grad():

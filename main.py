@@ -43,13 +43,11 @@ def train_vae(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample
               distribution, batch_size):
     fix_random_seed(seed)
 
-    loss_file_path = os.path.join(results_dir, 'loss.pkl')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     else:
-        if os.path.exists(loss_file_path):
-            print(f"Skipping: '{loss_file_path}' already exists.")
-            return
+        print(f"Skipping: '{results_dir}' already exists.")
+        return
 
     # Load data
     data_holder = DataHolder()
@@ -63,13 +61,16 @@ def train_vae(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample
 
     # Train
     vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
-    losses = LossHolder()
+    train_losses = LossHolder(results_dir, train=True)
+    test_losses = LossHolder(results_dir, train=False)
     for epoch in range(1, epochs + 1):
-        test_loss = vae.train_epoch()
+        train_loss, test_loss = vae.train_epoch()
         print(f"Epoch: {epoch}/{epochs}", flush=True)
-        losses.add(test_loss)
+        train_losses.add(train_loss)
+        test_losses.add(test_loss)
         file_name = os.path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
-        losses.save(loss_file_path)
+        train_losses.save()
+        test_losses.save()
         torch.save(vae_network, file_name)
 
 
