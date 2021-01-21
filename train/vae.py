@@ -1,22 +1,6 @@
 import torch
 
 
-class LossHolder:
-    def __init__(self):
-        self.train_loss = []
-        self.test_loss = []
-
-    def add(self, train_loss, test_loss):
-        self.train_loss.append(train_loss)
-        self.test_loss.append(test_loss)
-
-    def as_numpy(self):
-        with torch.no_grad():
-            train_loss = torch.stack(self.train_loss)
-            test_loss = torch.stack(self.test_loss)
-            return train_loss.numpy(), test_loss.numpy()
-
-
 class VAE:
     def __init__(self, vae_model, data_holder, optimizer, learning_rate):
         self.vae_model = vae_model
