@@ -1,17 +1,14 @@
-import argparse
-import traceback
+import os
 
+import matplotlib.pyplot as plt
 import torch
 import torch.utils.data
-import yaml
 
 import mc_estimators
 import models.vae
 import train.vae
 from train.seeds import fix_random_seed
 from train.utils import DataHolder
-import matplotlib.pyplot as plt
-import os
 
 
 def get_stds(seed, dataset, latent_dim, sample_size, learning_rate, mc_estimator,
@@ -35,10 +32,9 @@ def get_stds(seed, dataset, latent_dim, sample_size, learning_rate, mc_estimator
     return grads
 
 
-def plot_stds(sample_size, mc_estimator, **kwargs):
-    stds = get_stds(sample_size=sample_size, mc_estimator=mc_estimator, **kwargs)
-    estimator = f'{mc_estimator} {sample_size} sample(s)'
-    print(f'Plotting {estimator} grad standard deviation')
+def plot_stds(mc_estimator, distribution, sample_size, **kwargs):
+    stds = get_stds(mc_estimator=mc_estimator, distribution=distribution, sample_size=sample_size, **kwargs)
+    print(f'Plotting {mc_estimator} grad standard deviation')
     plt.xlabel('hidden dim')
     for i, std in enumerate(stds):
         x = range(1, len(std)+1)
@@ -48,22 +44,6 @@ def plot_stds(sample_size, mc_estimator, **kwargs):
 
     if not os.path.exists('plots'):
         os.makedirs('plots')
-    plt.savefig(os.path.join('plots', f'stds_{mc_estimator}_{sample_size}.svg'))
+    plt.savefig(os.path.join('plots', f'stds_{mc_estimator}_{distribution}_{sample_size}.svg'))
     plt.clf()
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Gradient Estimator Standard Deviation Plotting Util')
-    parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
-    args = parser.parse_args()
-    config_file_paths = args.c
-    for config_file_path in config_file_paths:
-        try:
-            print(f"Reading '{config_file_path}'.")
-            with open(config_file_path, 'r') as f:
-                loaded_config = yaml.safe_load(f)
-            plot_stds(**loaded_config)
-        except Exception as e:
-            print(e)
-            traceback.print_exc()
-            continue

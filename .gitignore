@@ -342,11 +342,8 @@ tags
 # Ignore loaded datasets
 data/
 
-# Ignore generated results
-results/
-
 # Ignore configs
-config/**/*.yaml
+config/
 !config/default.yaml
 
 # Ignore plots

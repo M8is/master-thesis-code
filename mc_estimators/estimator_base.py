@@ -13,3 +13,6 @@ class MCEstimator(ABC):
     @abstractmethod
     def backward(self, params, losses):
         pass
+
+    def __str__(self):
+        return f'{type(self).__name__} {type(self.distribution).__name__} {self.sample_size} sample(s)'

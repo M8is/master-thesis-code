@@ -1,10 +1,8 @@
-import argparse
 import os
 import traceback
 
 import matplotlib.pyplot as plt
 import numpy as np
-import yaml
 
 from train.utils import LossHolder
 
@@ -50,8 +48,8 @@ def load_losses_per_estimator(configs):
     return losses_per_estimator
 
 
-def load_losses(results_dir, mc_estimator, sample_size, **_):
-    estimator = f'{mc_estimator} {sample_size} sample(s)'
+def load_losses(results_dir, mc_estimator, sample_size, distribution, **_):
+    estimator = f'{mc_estimator} {distribution} {sample_size} sample(s)'
     return estimator, LossHolder(results_dir, train=True), LossHolder(results_dir, train=False)
 
 
@@ -64,27 +62,3 @@ def plot(estimator, x_label, mean, std):
     plt.plot(mean, '-', linewidth=.25, alpha=.8, label=estimator)
     plt.fill_between(x, mean - std, mean + std, alpha=0.3)
     plt.legend()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Loss Plotting Util')
-    parser.add_argument('CONFIGS', help='use a set of config files from config/configs.yaml')
-    args = parser.parse_args()
-
-    with open('config/configs.yaml', 'r') as f:
-        index = yaml.safe_load(f)
-    config_file_paths = index[args.CONFIGS]
-
-    loaded_configs = []
-    for config_file_path in config_file_paths:
-        try:
-            print(f"Reading '{config_file_path}'.")
-            with open(config_file_path, 'r') as f:
-                loaded_config = yaml.safe_load(f)
-            loaded_configs.append(loaded_config)
-        except Exception as e:
-            print(e)
-            traceback.print_exc()
-            continue
-
-    plot_losses(loaded_configs)

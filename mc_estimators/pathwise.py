@@ -1,4 +1,4 @@
-from mc_estimators.base import MCEstimator
+from .estimator_base import MCEstimator
 
 
 class Pathwise(MCEstimator):

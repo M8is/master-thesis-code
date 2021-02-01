@@ -17,7 +17,7 @@ class VAE:
             self.optimizer.zero_grad()
             self.vae_model.backward(params, losses)
             self.optimizer.step()
-            train_losses.append((losses + self.vae_model.probabilistic.kl(params)).mean())
+            train_losses.append((losses + self.vae_model.probabilistic.distribution.kl(params)).mean())
             test_losses.append(self.test_epoch())
         return torch.stack(train_losses), torch.stack(test_losses)
 
@@ -28,7 +28,7 @@ class VAE:
             test_losses = []
             for x_batch, _ in self.data_holder.test_holder:
                 params, x_preds = self.vae_model(x_batch)
-                losses = self.__bce_loss(x_batch, x_preds) + self.vae_model.probabilistic.kl(params)
+                losses = self.__bce_loss(x_batch, x_preds) + self.vae_model.probabilistic.distribution.kl(params)
                 test_losses.append(losses.detach().mean())
                 break  # TODO delete break (just for debugging)
 

@@ -1,4 +1,4 @@
-from .base import MCEstimator
+from .estimator_base import MCEstimator
 
 
 class Reinforce(MCEstimator):

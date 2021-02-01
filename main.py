@@ -1,18 +1,13 @@
 import argparse
-import os
 import traceback
+from os import path
 
-import torch
-import torch.utils.data
 import yaml
 
-import mc_estimators
-import models.vae
-import train.vae
-from train.seeds import fix_random_seed
-from train.utils import DataHolder, LossHolder
-from scripts.generate_images import generate_images
-from scripts.plot_losses import plot_losses
+from utils.generate_images import generate_images
+from utils.plot_losses import plot_losses
+from utils.train_vae import train_vae
+from utils.clean import clean
 
 
 def main(args):
@@ -25,9 +20,14 @@ def main(args):
     configs = []
     for config_path in config_file_paths:
         try:
-            print(f"Training with '{config_path}'.")
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
+            if 'results_dir' not in config:
+                config['results_dir'] = path.splitext(config_path)[0]
+
+            if args.clean:
+                clean(**config)
+
             train_vae(**config)
             generate_images(**config)
             configs.append(config)
@@ -39,41 +39,10 @@ def main(args):
     plot_losses(configs)
 
 
-def train_vae(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample_size, learning_rate, mc_estimator,
-              distribution, batch_size):
-    fix_random_seed(seed)
-
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
-    else:
-        print(f"Skipping: '{results_dir}' already exists.")
-        return
-
-    data_holder = DataHolder(dataset, batch_size)
-
-    # Create model
-    estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size)
-    encoder = models.vae.Encoder(data_holder.height * data_holder.width, hidden_dim, (latent_dim, latent_dim))
-    decoder = models.vae.Decoder(data_holder.height * data_holder.width, hidden_dim, latent_dim)
-    vae_network = models.vae.VAE(encoder, decoder, estimator)
-
-    # Train
-    vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
-    train_losses = LossHolder(results_dir, train=True)
-    test_losses = LossHolder(results_dir, train=False)
-    for epoch in range(1, epochs + 1):
-        train_loss, test_loss = vae.train_epoch()
-        print(f"Epoch: {epoch}/{epochs}", flush=True)
-        train_losses.add(train_loss)
-        test_losses.add(test_loss)
-        file_name = os.path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
-        train_losses.save()
-        test_losses.save()
-        torch.save(vae_network, file_name)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
     parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
     parser.add_argument('-cs', default=None, help='use a set of config files from config/configs.yaml')
+    parser.add_argument('--clean', action='store_true',
+                        help='WARNING: deletes all result directories and starts a clean run')
     main(parser.parse_args())

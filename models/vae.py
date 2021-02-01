@@ -11,7 +11,7 @@ class VAE(torch.nn.Module):
 
     def forward(self, x):
         params = self.encoder(x)
-        samples = self.probabilistic.grad_samples(params) if self.training else self.probabilistic.sample(params)
+        samples = self.probabilistic.sample(params) if self.training else self.probabilistic.distribution.sample(params)
         replications = self.decoder(samples)
         return params, replications
 
@@ -19,7 +19,7 @@ class VAE(torch.nn.Module):
         # Set decoder gradients. Also sets encoder gradients, if samples where not detached.
         losses.mean().backward(retain_graph=True)
         # Set encoder gradients.
-        self.probabilistic.kl(params).mean().backward(retain_graph=True)
+        self.probabilistic.distribution.kl(params).mean().backward(retain_graph=True)
         self.probabilistic.backward(params, losses.detach())
 
 
