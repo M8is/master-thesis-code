@@ -12,13 +12,7 @@ class DataHolder:
         'mnist': datasets.MNIST
     }
 
-    def __init__(self):
-        self.train_holder = None
-        self.test_holder = None
-        self.height = None
-        self.width = None
-
-    def load_datasets(self, dataset_tag, batch_size, shuffle=True):
+    def __init__(self, dataset_tag, batch_size, shuffle=True):
         if dataset_tag.lower() not in self._datasets:
             raise ValueError(f'Invalid dataset `{dataset_tag}`. Allowed values: {list(self._datasets.keys())}.')
         dataset = self._datasets[dataset_tag.lower()]

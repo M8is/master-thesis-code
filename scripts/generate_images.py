@@ -34,8 +34,7 @@ def generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, **_)
             print(f"Skipping: '{out_dir}' already exists.")
             continue
 
-        data_holder = DataHolder()
-        data_holder.load_datasets(dataset, batch_size, shuffle=False)
+        data_holder = DataHolder(dataset, batch_size, shuffle=False)
 
         print(f'Generating images for `{model_file_path}` in `{out_dir}`...')
         for batch_id, (x_batch, _) in enumerate(data_holder.test_holder):

@@ -49,9 +49,7 @@ def train_vae(seed, results_dir, dataset, hidden_dim, latent_dim, epochs, sample
         print(f"Skipping: '{results_dir}' already exists.")
         return
 
-    # Load data
-    data_holder = DataHolder()
-    data_holder.load_datasets(dataset, batch_size)
+    data_holder = DataHolder(dataset, batch_size)
 
     # Create model
     estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size)
