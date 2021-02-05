@@ -2,7 +2,7 @@ from .measure_valued_derivative import MVD
 from .pathwise import Pathwise
 from .reinforce import Reinforce
 
-from .distributions import MultivariateNormal, Exponential, Poisson
+from .mvd_distributions import normal, exponential, poisson
 
 
 estimators = {
@@ -12,9 +12,9 @@ estimators = {
 }
 
 distributions = {
-    'multivariatenormal': MultivariateNormal,
-    'exponential': Exponential,
-    'poisson': Poisson
+    'multivariatenormal': normal.MultivariateNormal,
+    'exponential': exponential.Exponential,
+    'poisson': poisson.Poisson
 }
 
 

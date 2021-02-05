@@ -2,8 +2,8 @@ from .estimator_base import MCEstimator
 
 
 class Reinforce(MCEstimator):
-    def __init__(self, distribution, sample_size):
-        super().__init__(distribution, sample_size)
+    def __init__(self, distribution, sample_size, *args, **kwargs):
+        super().__init__(distribution, sample_size, *args, **kwargs)
         self.samples = None
 
     def sample(self, params):

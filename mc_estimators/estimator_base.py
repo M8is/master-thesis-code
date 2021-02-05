@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class MCEstimator(ABC):
-    def __init__(self, distribution, sample_size):
+    def __init__(self, distribution, sample_size, *args, **kwargs):
         self.distribution = distribution
         self.sample_size = sample_size
 
