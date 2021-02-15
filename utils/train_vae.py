@@ -10,8 +10,8 @@ from train.seeds import fix_random_seed
 from train.utils import DataHolder, LossHolder
 
 
-def train_vae(seed, results_dir, dataset, hidden_dim, param_dims, latent_dim, epochs, sample_size, learning_rate,
-              mc_estimator, distribution, batch_size):
+def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent_dim, epochs, sample_size,
+              learning_rate, mc_estimator, distribution, batch_size):
     fix_random_seed(seed)
 
     if not path.exists(results_dir):
@@ -31,7 +31,7 @@ def train_vae(seed, results_dir, dataset, hidden_dim, param_dims, latent_dim, ep
     print(f'Training with {estimator}.')
 
     # Train
-    vae = train.vae.VAE(vae_network, data_holder, optimizer=torch.optim.Adam, learning_rate=learning_rate)
+    vae = train.vae.VAE(vae_network, data_holder, device, torch.optim.Adam, learning_rate)
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
     for epoch in range(1, epochs + 1):

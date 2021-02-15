@@ -2,12 +2,13 @@ import argparse
 import traceback
 from os import path
 
+import torch
 import yaml
 
+from utils.clean import clean
 from utils.generate_images import generate_images
 from utils.plot_losses import plot_losses
 from utils.train_vae import train_vae
-from utils.clean import clean
 
 
 def main(args):
@@ -24,6 +25,12 @@ def main(args):
                 config = yaml.safe_load(f)
             if 'results_dir' not in config:
                 config['results_dir'] = path.splitext(config_path)[0]
+
+            if 'gpu' in config and torch.cuda.is_available():
+                dev = config['gpu']
+            else:
+                dev = 'cpu'
+            config['device'] = torch.device(dev)
 
             if args.clean:
                 clean(**config)

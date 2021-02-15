@@ -6,7 +6,7 @@ from torchvision.utils import save_image
 from train.utils import DataHolder
 
 
-def generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, **_):
+def generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, device, **_):
     for epoch in range(1, epochs + 1):
         model_file_path = os.path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
         if not os.path.exists(model_file_path):

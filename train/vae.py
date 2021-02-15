@@ -2,16 +2,18 @@ import torch
 
 
 class VAE:
-    def __init__(self, vae_model, data_holder, optimizer, learning_rate):
+    def __init__(self, vae_model, data_holder, device, optimizer, learning_rate):
         self.vae_model = vae_model
         self.data_holder = data_holder
         self.optimizer = optimizer(vae_model.parameters(), lr=learning_rate)
+        self.device = device
 
     def train_epoch(self):
         train_losses = []
         test_losses = []
+        self.vae_model.train()
         for batch_id, (x_batch, _) in enumerate(self.data_holder.train_holder):
-            self.vae_model.train()
+            x_batch = x_batch.to(self.device)
             params, x_preds = self.vae_model(x_batch)
             losses = self.__bce_loss(x_batch, x_preds)
             self.optimizer.zero_grad()
@@ -28,6 +30,7 @@ class VAE:
             self.vae_model.eval()
             test_losses = []
             for x_batch, _ in self.data_holder.test_holder:
+                x_batch = x_batch.to(self.device)
                 params, x_preds = self.vae_model(x_batch)
                 losses = self.__bce_loss(x_batch, x_preds) + self.vae_model.probabilistic.distribution.kl(params)
                 test_losses.append(losses.detach().mean())
