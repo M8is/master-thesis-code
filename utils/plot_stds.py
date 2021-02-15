@@ -47,4 +47,3 @@ def plot_stds(mc_estimator, distribution, sample_size, **kwargs):
         os.makedirs('plots')
     plt.savefig(os.path.join('plots', f'stds_{mc_estimator}_{distribution}_{sample_size}.svg'))
     plt.clf()
-

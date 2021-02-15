@@ -14,23 +14,21 @@ def plot_losses(configs):
         train_losses = np.stack(
             [lh[0].numpy() for lh in loss_holders if len(lh[0].numpy()) == len(loss_holders[0][0].numpy())])
         plot(estimator, 'Train Loss', train_losses.mean(axis=0).flatten(), train_losses.std(axis=0).flatten())
-    plt.savefig(os.path.join('plots', 'train.svg'))
+    # TODO: fix configs[0]
+    plt.savefig(os.path.join(configs[0]['results_dir'], 'train.svg'))
     plt.clf()
 
     for estimator, loss_holders in losses_per_estimator.items():
         test_losses = np.stack(
             [lh[1].numpy() for lh in loss_holders if len(lh[1].numpy()) == len(loss_holders[0][1].numpy())])
         plot(estimator, 'Test Loss', test_losses.mean(axis=0).flatten(), test_losses.std(axis=0).flatten())
-    plt.savefig(os.path.join('plots', 'test.svg'))
+    # TODO: fix configs[0]
+    plt.savefig(os.path.join(configs[0]['results_dir'], 'test.svg'))
     plt.clf()
 
 
 def load_losses_per_estimator(configs):
     losses_per_estimator = dict()
-
-    plot_dir = 'plots'
-    if not os.path.exists(plot_dir):
-        os.makedirs(plot_dir)
 
     for config in configs:
         try:

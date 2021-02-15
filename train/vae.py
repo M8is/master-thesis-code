@@ -20,7 +20,7 @@ class VAE:
             self.vae_model.backward(params, losses)
             self.optimizer.step()
             kl = self.vae_model.probabilistic.distribution.kl(params)
-            train_losses.append(torch.stack((losses.detach().mean(), kl.detach().mean())))
+            train_losses.append((losses.detach().mean() + kl.detach().mean()))
             test_losses.append(self.test_epoch())
         return torch.stack(train_losses), torch.stack(test_losses)
 
@@ -61,4 +61,4 @@ class VAE:
         # Use no reduction to get separate losses for each image
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         x_orig = x.view(-1, self.data_holder.height * self.data_holder.width).expand_as(x_pred)
-        return binary_cross_entropy(x_pred, x_orig).mean(dim=-1)
+        return binary_cross_entropy(x_pred, x_orig).sum(dim=-1)
