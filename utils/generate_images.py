@@ -25,7 +25,7 @@ def generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, devi
         print(f'Generating images for `{model_file_path}` in `{out_dir}`...')
         for batch_id, (x_batch, _) in enumerate(data_holder.test_holder):
             n = min(x_batch.size(0), 8)
-            x_batch = x_batch[:n]
+            x_batch = x_batch[:n].to(device)
             _, x_pred_batch = model(x_batch)
             comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
             save_image(comparison, os.path.join(out_dir, f'recon_{batch_id}.png'), nrow=n)

@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class Distribution(ABC):
+    def __init__(self, device):
+        self.device = device
+
     @abstractmethod
     def sample(self, params, size=1, with_grad=False):
         pass

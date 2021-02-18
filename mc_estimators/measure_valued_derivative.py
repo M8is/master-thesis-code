@@ -5,7 +5,8 @@ from .estimator_base import MCEstimator
 
 class MVD(MCEstimator):
     def sample(self, params):
-        return self.distribution.mvd_sample(params, self.sample_size)
+        with torch.no_grad():
+            return self.distribution.mvd_sample(params, self.sample_size)
 
     def backward(self, params, losses):
         with torch.no_grad():

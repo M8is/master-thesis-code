@@ -18,7 +18,7 @@ distributions = {
 }
 
 
-def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, *args, **kwargs):
+def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, device: str, *args, **kwargs):
     """ Create a new estimator
 
     :param estimator_tag: How the gradient will be estimated. Check `estimators.keys()` for valid values.
@@ -36,6 +36,6 @@ def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, *
 
     if distribution_tag not in distributions:
         raise ValueError(f'Distribution {distribution_tag} not available for estimator {estimator_tag}.')
-    distribution = distributions[distribution_tag]()
+    distribution = distributions[distribution_tag](device)
 
     return estimator(distribution, sample_size, *args, **kwargs)

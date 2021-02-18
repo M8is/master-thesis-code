@@ -26,10 +26,9 @@ def main(args):
             if 'results_dir' not in config:
                 config['results_dir'] = path.splitext(config_path)[0]
 
-            if 'gpu' in config and torch.cuda.is_available():
-                dev = config['gpu']
-            else:
-                dev = 'cpu'
+            dev = 'cpu'
+            if 'device' in config and torch.cuda.is_available():
+                dev = config['device']
             config['device'] = torch.device(dev)
 
             if args.clean:
