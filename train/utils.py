@@ -47,4 +47,4 @@ class LossHolder:
 
     def numpy(self) -> np.array:
         with torch.no_grad():
-            return torch.stack(self.losses).numpy()
+            return torch.stack(self.losses).cpu().numpy()

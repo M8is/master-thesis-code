@@ -23,10 +23,11 @@ def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent
     data_holder = DataHolder(dataset, batch_size)
 
     # Create model
-    estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size)
+    estimator = mc_estimators.get_estimator(mc_estimator, distribution, sample_size, device)
     encoder = models.vae.Encoder(data_holder.height * data_holder.width, hidden_dim, param_dims)
     decoder = models.vae.Decoder(data_holder.height * data_holder.width, hidden_dim, latent_dim)
     vae_network = models.vae.VAE(encoder, decoder, estimator)
+    vae_network.to(device)
 
     print(f'Training with {estimator}.')
 

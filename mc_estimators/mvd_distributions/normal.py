@@ -6,7 +6,7 @@ from .distribution_base import Distribution
 class MultivariateNormal(Distribution):
     def sample(self, params, size=1, with_grad=False):
         mean, log_std = params
-        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad)
+        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
         return mean + eps * torch.exp(log_std)
 
     def mvd_sample(self, params, size):
@@ -34,41 +34,27 @@ class MultivariateNormal(Distribution):
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(cov))
         return dist.log_prob(samples)
 
-    @staticmethod
-    def __mean_samples(sample_size, mean, std, coupled=True):
-        pos_samples = MultivariateNormal.__sample_weibull(sample_size, mean.shape)
-        neg_samples = pos_samples if coupled else MultivariateNormal.__sample_weibull(sample_size, mean.shape)
+    def __mean_samples(self, sample_size, mean, std, coupled=True):
+        pos_samples = self.__sample_weibull(sample_size, mean.shape)
+        neg_samples = pos_samples if coupled else self.__sample_weibull(sample_size, mean.shape)
         samples = torch.diag_embed(torch.stack((pos_samples, -neg_samples)) * std).transpose(2, 3)
         return samples + mean
 
-    @staticmethod
-    def __cov_samples(sample_size, std, coupled=True):
-        pos_samples = MultivariateNormal.__sample_standard_doublesided_maxwell(sample_size, std.shape)
-        neg_samples = MultivariateNormal.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if coupled \
-            else MultivariateNormal.__sample_standard_normal(sample_size, std.shape)
+    def __cov_samples(self, sample_size, std, coupled=True):
+        pos_samples = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
+        neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if coupled \
+            else self.__sample_standard_normal(sample_size, std.shape)
         return torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
 
-    @staticmethod
-    def __mean_constant(std):
-        return 1. / (np.sqrt(2 * np.pi) * std)
+    def __sample_weibull(self, sample_size, shape):
+        return torch.distributions.Weibull(np.sqrt(2.), concentration=2.).sample((sample_size, *shape)).to(self.device)
 
-    @staticmethod
-    def __std_constant(std):
-        return 1. / std
+    def __sample_standard_doublesided_maxwell(self, sample_size, shape):
+        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((sample_size, *shape)).to(self.device)
+        binomial_sample = torch.distributions.Binomial(1, 0.5).sample((sample_size, *shape)).to(self.device)
+        return torch.sqrt(gamma_sample) * (2 * binomial_sample - 1)
 
-    @staticmethod
-    def __sample_weibull(sample_size, shape):
-        return torch.distributions.Weibull(np.sqrt(2.), concentration=2.).sample((sample_size, *shape))
-
-    @staticmethod
-    def __sample_standard_doublesided_maxwell(sample_size, shape):
-        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((sample_size, *shape))
-        binomial_sample = torch.distributions.Binomial(1, 0.5).sample((sample_size, *shape))
-        dsmaxwell_sample = torch.sqrt(gamma_sample) * (2 * binomial_sample - 1)
-        return dsmaxwell_sample
-
-    @staticmethod
-    def __sample_standard_gaussian_from_standard_dsmaxwell(std_dsmaxwell_samples):
+    def __sample_standard_gaussian_from_standard_dsmaxwell(self, std_dsmaxwell_samples):
         """
         Adapted from https://github.com/deepmind/mc_gradients
         Generate Gaussian variates from Double-sided Maxwell variates.
@@ -85,10 +71,16 @@ class MultivariateNormal(Distribution):
         Returns:
             Tensor of Gaussian variates with the same shape as the input.
         """
-        uniform_rvs = torch.distributions.uniform.Uniform(low=0., high=1.).sample(std_dsmaxwell_samples.shape)
-        return uniform_rvs * std_dsmaxwell_samples
+        dist = torch.distributions.uniform.Uniform(low=0., high=1.)
+        return dist.sample(std_dsmaxwell_samples.shape).to(self.device) * std_dsmaxwell_samples
+
+    def __sample_standard_normal(self, sample_size, shape):
+        return torch.distributions.Normal(0, 1).sample((sample_size, *shape)).to(self.device)
 
     @staticmethod
-    def __sample_standard_normal(sample_size, shape):
-        standard_normal = torch.distributions.Normal(0, 1)
-        return standard_normal.sample((sample_size, *shape))
+    def __mean_constant(std):
+        return 1. / (np.sqrt(2 * np.pi) * std)
+
+    @staticmethod
+    def __std_constant(std):
+        return 1. / std
