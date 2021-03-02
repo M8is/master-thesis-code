@@ -4,7 +4,7 @@ import traceback
 import matplotlib.pyplot as plt
 import numpy as np
 
-from train.utils import LossHolder
+from utils.loss_holder import LossHolder
 
 
 def plot_losses(configs):
@@ -45,7 +45,7 @@ def load_losses_per_results_dir(configs):
 def plot(mean, std, file_path):
     print(f"Plotting '{file_path}'.")
     plt.yscale('log')
-    plt.plot(mean, '-', linewidth=.25, alpha=.8)
+    plt.plot(mean, '-', linewidth=1., alpha=.8)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
     plt.savefig(file_path)
     plt.clf()
