@@ -23,7 +23,7 @@ def generate_images_vae(results_dir, dataset, epochs, mc_estimator, batch_size, 
         data_holder = DataHolder(dataset, batch_size, shuffle=False)
 
         print(f'Generating images for `{model_file_path}` in `{out_dir}`...')
-        for batch_id, (x_batch, _) in enumerate(data_holder.test_holder):
+        for batch_id, (x_batch, _) in enumerate(data_holder.test):
             n = min(x_batch.size(0), 8)
             x_batch = x_batch[:n].to(device)
             _, x_pred_batch = model(x_batch)

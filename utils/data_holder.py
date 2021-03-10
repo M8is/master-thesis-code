@@ -14,11 +14,11 @@ class DataHolder(ABC):
         self.__train_holder, self.__test_holder = self.load(batch_size)
 
     @property
-    def train_holder(self):
+    def train(self):
         return self.__train_holder()
 
     @property
-    def test_holder(self):
+    def test(self):
         return self.__test_holder()
 
     @staticmethod
@@ -28,15 +28,15 @@ class DataHolder(ABC):
         dataset = DataHolder._datasets[dataset_tag.lower()]
         return dataset(*args, **kwargs)
 
-    @abstractmethod
-    def load(self, batch_size):
-        pass
-
     @staticmethod
     def register_dataset(key: str):
         def __reg(cls):
             DataHolder._datasets[key] = cls
         return __reg
+
+    @abstractmethod
+    def load(self, batch_size):
+        pass
 
 
 @DataHolder.register_dataset('mnist')

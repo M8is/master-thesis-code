@@ -5,11 +5,11 @@ from os import path
 import torch
 import yaml
 
-from modes.estimator_stds import get_estimator_stds
-from modes.generate_images import generate_images_vae
-from modes.plot_losses import plot_losses
-from modes.train_log_reg import train_log_reg
-from modes.train_vae import train_vae
+from tasks.estimator_stds import get_estimator_stds
+from tasks.generate_images import generate_images_vae
+from tasks.plot_losses import plot_losses
+from tasks.train_log_reg import train_log_reg
+from tasks.train_vae import train_vae
 from utils.clean import clean
 
 
@@ -36,12 +36,12 @@ def main(args):
             if args.clean:
                 clean(**config)
 
-            if args.mode == 'vae':
+            if args.task == 'vae':
                 train_vae(**config)
                 generate_images_vae(**config)
-            elif args.mode == 'logreg':
+            elif args.task == 'logreg':
                 train_log_reg(**config)
-            elif args.mode == 'gradstds':
+            elif args.task == 'gradstds':
                 print(get_estimator_stds(**config))
 
             configs.append(config)
@@ -50,13 +50,13 @@ def main(args):
             traceback.print_exc()
             continue
 
-    if args.mode == 'vae' or args.mode == 'logreg':
+    if args.task == 'vae' or args.task == 'logreg':
         plot_losses(configs)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
-    parser.add_argument('mode', help='the main task to run', choices=['vae', 'logreg', 'gradstds'], default='vae')
+    parser.add_argument('task', help='the main task to run', choices=['vae', 'logreg', 'gradstds'], default='vae')
     parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
     parser.add_argument('-cs', default=None, help='use a set of config files from config/configs.yaml')
     parser.add_argument('--clean', action='store_true',

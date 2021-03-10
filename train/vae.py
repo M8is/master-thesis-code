@@ -12,7 +12,7 @@ class VAE:
         train_losses = []
         test_losses = []
         self.vae_model.train()
-        for batch_id, (x_batch, _) in enumerate(self.data_holder.train_holder):
+        for batch_id, (x_batch, _) in enumerate(self.data_holder.train):
             x_batch = x_batch.to(self.device)
             params, x_preds = self.vae_model(x_batch)
             losses = self.__bce_loss(x_batch, x_preds)
@@ -29,7 +29,7 @@ class VAE:
             set_previous_mode = self.vae_model.train if self.vae_model.training else self.vae_model.eval
             self.vae_model.eval()
             test_losses = []
-            for x_batch, _ in self.data_holder.test_holder:
+            for x_batch, _ in self.data_holder.test:
                 x_batch = x_batch.to(self.device)
                 params, x_preds = self.vae_model(x_batch)
                 losses = self.__bce_loss(x_batch, x_preds) + self.vae_model.probabilistic.distribution.kl(params)
@@ -40,8 +40,8 @@ class VAE:
 
     def get_estimator_stds(self, sample_size):
         result = []
-        batch_size = self.data_holder.train_holder.batch_size
-        for x_batch, _ in self.data_holder.train_holder:
+        batch_size = self.data_holder.train.batch_size
+        for x_batch, _ in self.data_holder.train:
             if x_batch.size(0) != batch_size:
                 continue
             x_batch = x_batch.to(self.device)
