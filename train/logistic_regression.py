@@ -14,6 +14,8 @@ class LogisticRegression:
         self.model.train()
         for x_batch, y_batch in self.data_holder.train:
             params, y_preds = self.model(x_batch.to(self.device))
+            if self.model.probabilistic.with_baseline:
+                self.model.probabilistic.set_baseline(y_batch)
             losses = self.__bce_loss(y_batch.to(self.device), y_preds)
             self.optimizer.zero_grad()
             self.model.backward(params, losses)

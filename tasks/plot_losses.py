@@ -45,7 +45,7 @@ def load_losses_per_results_dir(configs):
 def plot(mean, std, file_path):
     print(f"Plotting '{file_path}'.")
     plt.yscale('log')
-    plt.ylim(0, 250)
+    plt.ylim(0.1, 250)
     plt.plot(mean, '-', linewidth=1., alpha=.8)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
     plt.savefig(file_path)

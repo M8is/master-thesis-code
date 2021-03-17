@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 class MCEstimator(ABC):
     def __init__(self, distribution, sample_size, *args, **kwargs):
+        self.with_baseline = False
         self.distribution = distribution
         self.sample_size = sample_size
 
@@ -12,6 +13,9 @@ class MCEstimator(ABC):
 
     @abstractmethod
     def backward(self, params, losses):
+        pass
+
+    def set_baseline(self, batch):
         pass
 
     def __str__(self):
