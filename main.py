@@ -5,11 +5,10 @@ from os import path
 import torch
 import yaml
 
-from tasks.estimator_stds import get_estimator_stds
 from tasks.generate_images import generate_images_vae
-from tasks.plot_losses import plot_losses
 from tasks.train_log_reg import train_log_reg
-from tasks.train_vae import train_vae
+from tasks.train_parabola import train_parabola
+from tasks.train_vae import train_vae, get_estimator_stds
 from utils.clean import clean
 
 
@@ -36,13 +35,15 @@ def main(args):
             if args.clean:
                 clean(**config)
 
-            if args.task == 'vae':
+            if args.gradstds == 'gradstds':
+                print(get_estimator_stds(**config))
+            elif config['task'] == 'vae':
                 train_vae(**config)
                 generate_images_vae(**config)
-            elif args.task == 'logreg':
+            elif config['task'] == 'logreg':
                 train_log_reg(**config)
-            elif args.task == 'gradstds':
-                print(get_estimator_stds(**config))
+            elif config['task'] == 'parabola':
+                train_parabola(**config)
 
             configs.append(config)
         except Exception as e:
@@ -50,15 +51,13 @@ def main(args):
             traceback.print_exc()
             continue
 
-    if args.task == 'vae' or args.task == 'logreg':
-        plot_losses(configs)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
-    parser.add_argument('task', help='the main task to run', choices=['vae', 'logreg', 'gradstds'], default='vae')
     parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
     parser.add_argument('-cs', default=None, help='use a set of config files from config/configs.yaml')
     parser.add_argument('--clean', action='store_true',
                         help='WARNING: deletes all result directories and starts a clean run')
+    parser.add_argument('--gradstds', action='store_true',
+                        help='Calculate gradient standard deviations for the given configurations')
     main(parser.parse_args())

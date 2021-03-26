@@ -21,6 +21,11 @@ class DataHolder(ABC):
     def test(self):
         return self.__test_holder()
 
+    @property
+    @abstractmethod
+    def dims(self):
+        pass
+
     @staticmethod
     def get(dataset_tag: str, *args, **kwargs) -> 'DataHolder':
         if dataset_tag.lower() not in DataHolder._datasets:
@@ -41,8 +46,9 @@ class DataHolder(ABC):
 
 @DataHolder.register_dataset('mnist')
 class MNIST(DataHolder):
-    height = 28
-    width = 28
+    @property
+    def dims(self):
+        return 784
 
     def load(self, batch_size):
         train_holder = DataLoader(
@@ -56,6 +62,10 @@ class MNIST(DataHolder):
 
 @DataHolder.register_dataset('cancer')
 class BreastCancer(DataHolder):
+    @property
+    def dims(self):
+        return 30
+
     def load(self, batch_size):
         x, y = sklearn.datasets.load_breast_cancer(return_X_y=True)
         x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in
