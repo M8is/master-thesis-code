@@ -1,0 +1,10 @@
+task: 'parabola'
+seed: 2930489
+mc_estimator: 'reinforce'
+distribution: 'Bernoulli'
+param_dims:
+  - 1
+epochs: 1000
+sample_size: 1000
+learning_rate: 0.001
+device: 'cuda:0'

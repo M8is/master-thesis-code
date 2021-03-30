@@ -1,0 +1,13 @@
+task: 'logreg'
+seed: 2930489
+dataset: 'cancer'
+batch_size: 32
+mc_estimator: 'reinforce'
+distribution: 'MultivariateNormal'
+param_dims:
+  - 30
+  - 30
+epochs: 50
+sample_size: 1000
+learning_rate: 0.001
+device: 'cuda:0'

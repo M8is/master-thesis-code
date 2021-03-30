@@ -1,0 +1,10 @@
+task: 'parabola'
+seed: 2930489
+mc_estimator: 'pathwise'
+distribution: 'MultivariateNormal'
+param_dims:
+  - 2
+epochs: 50
+sample_size: 10
+learning_rate: 0.001
+device: 'cuda:0'
