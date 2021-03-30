@@ -53,7 +53,7 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
     for batch_id, (x_batch, _) in enumerate(data_holder.train):
         x_batch = x_batch.view(-1, data_holder.dims).to(device)
         params, x_preds = vae_model(x_batch)
-        losses = __bce_loss(x_batch, x_preds.clamp(0, 1))
+        losses = __bce_loss(x_batch, x_preds)
         optimizer.zero_grad()
         vae_model.backward(params, losses)
         kl = vae_model.probabilistic.distribution.kl(params)
