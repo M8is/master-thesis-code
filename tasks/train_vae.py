@@ -41,7 +41,8 @@ def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent
         train_losses.save()
         test_losses.save()
         torch.save(vae_network, file_name)
-        print(f"Epoch: {epoch}/{epochs}", flush=True)
+        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1]:.2f}, Test loss: {test_losses.numpy()[-1]:.2f}",
+              flush=True)
     train_losses.plot()
     test_losses.plot()
 
@@ -59,7 +60,7 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         kl = vae_model.probabilistic.distribution.kl(params)
         optimizer.step()
         train_losses.append((losses.detach().mean() + kl.detach().mean()))
-        test_losses.append(__test_epoch(vae_model, data_holder, device))
+    test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
 
