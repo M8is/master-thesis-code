@@ -28,12 +28,12 @@ class Encoder(torch.nn.Module):
         self.input_dim = input_dim
         self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
         self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = torch.nn.ModuleList([torch.nn.Linear(hidden_dim, latent_dim) for latent_dim in latent_dims])
+        self.fc3 = torch.nn.Linear(hidden_dim, sum(latent_dims))
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x))
         h2 = F.relu(h1)
-        return [fc(h2) for fc in self.fc3]
+        return self.fc3(h2)
 
 
 class Decoder(torch.nn.Module):

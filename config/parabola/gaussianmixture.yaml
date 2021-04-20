@@ -1,0 +1,12 @@
+task: 'parabola'
+seed: 2930489
+mc_estimator: 'Pathwise'
+distribution: 'GaussianMixture'
+param_dims:
+  - 3
+  - 1
+  - 1
+epochs: 200
+sample_size: 10
+learning_rate: 0.001
+device: 'cuda:0'

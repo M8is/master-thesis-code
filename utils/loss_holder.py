@@ -27,7 +27,7 @@ class LossHolder:
 
     def numpy(self) -> np.array:
         with torch.no_grad():
-            return torch.cat(self.losses).numpy()
+            return torch.stack(self.losses).numpy()
 
     def plot(self, logscale=True):
         print(f"Plotting '{self.__plot_file}'.")

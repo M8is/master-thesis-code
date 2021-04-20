@@ -12,9 +12,10 @@ class MCEstimator(ABC, torch.nn.Module):
     def forward(self, params):
         return self._sample(params) if self.training else self.distribution.sample(params)
 
-    def backward(self, params, losses):
+    def backward(self, params, losses, retain_graph=False):
+        params = torch.stack(params)
         self.distribution.kl(params).mean().backward(retain_graph=True)
-        self._backward(params, losses)
+        self._backward(params.mean(dim=1), losses.mean(dim=1), retain_graph=retain_graph)
 
     def __str__(self):
         return f'{type(self).__name__} {type(self.distribution).__name__} {self.sample_size} sample(s)'
@@ -24,5 +25,5 @@ class MCEstimator(ABC, torch.nn.Module):
         pass
 
     @abstractmethod
-    def _backward(self, params, losses):
+    def _backward(self, params, losses, retain_graph):
         pass

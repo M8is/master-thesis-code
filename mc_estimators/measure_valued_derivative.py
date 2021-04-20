@@ -8,12 +8,7 @@ class MVD(MCEstimator):
         with torch.no_grad():
             return self.distribution.mvd_sample(params, self.sample_size)
 
-    def _backward(self, params, losses):
+    def _backward(self, params, losses, retain_graph):
         with torch.no_grad():
-            pos_losses, neg_losses = losses
-            delta = (pos_losses - neg_losses).mean(dim=1).transpose(-2, -1)
-            c = self.distribution.mvd_constant(params)
-            grad = c * delta
-            if len(params) <= 1:
-                grad.unsqueeze_(0)
-        torch.stack(params).backward(gradient=grad)
+            grad = self.distribution.mvd_grad(params, losses)
+        params.backward(gradient=grad, retain_graph=retain_graph)

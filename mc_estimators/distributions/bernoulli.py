@@ -9,7 +9,7 @@ class Bernoulli(Distribution):
     def mvd_sample(self, params, size):
         return torch.tensor([1, 0]).reshape(2, 1, 1, 1, 1).to(self.device)
 
-    def mvd_constant(self, params):
+    def _mvd_constant(self, params):
         return 1.
 
     def kl(self, params):
@@ -21,4 +21,4 @@ class Bernoulli(Distribution):
 
     @staticmethod
     def __as_prob(params):
-        return torch.sigmoid(params[0])
+        return torch.sigmoid(params)

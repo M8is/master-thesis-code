@@ -2,13 +2,13 @@ import torch
 
 
 class LinearLogisticRegression(torch.nn.Module):
-    def __init__(self, param_dims, probabilistic):
+    def __init__(self, latent_dims, probabilistic):
         super().__init__()
-        self.params = torch.nn.ParameterList([torch.nn.Parameter(torch.randn((d,))) for d in param_dims])
+        self.params = torch.nn.Parameter(torch.randn((sum(latent_dims),)))
         self.probabilistic = probabilistic
 
     def forward(self, x):
-        params = [p.unsqueeze(0).repeat_interleave(x.size(0), dim=0) for p in self.params]
+        params = self.params.unsqueeze(0).repeat_interleave(x.size(0), dim=0)
         samples = self.probabilistic(params) if self.training else self.probabilistic.distribution.sample(params)
         return params, self.__logistic((x * samples).sum(dim=-1))
 
