@@ -1,4 +1,4 @@
-task: 'parabola'
+task: 'polynomial'
 seed: 2930489
 mc_estimator: 'pathwise'
 distribution: 'MultivariateNormal'

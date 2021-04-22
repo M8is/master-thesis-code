@@ -1,10 +1,10 @@
-task: 'parabola'
+task: 'polynomial'
 seed: 2930489
-mc_estimator: 'reinforce'
+mc_estimator: 'mvd'
 distribution: 'Bernoulli'
 param_dims:
   - 1
 epochs: 1000
-sample_size: 1000
+sample_size: 1
 learning_rate: 0.001
 device: 'cuda:0'
