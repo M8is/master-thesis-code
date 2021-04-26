@@ -1,41 +1,50 @@
 import numpy as np
+import scipy.stats
 import torch
+
 from .distribution_base import Distribution
 
 
 class MultivariateNormal(Distribution):
-    def sample(self, params, size=1, with_grad=False):
-        mean, log_std = self.__prepare(params)
+    def sample(self, raw_params, size=1, with_grad=False):
+        params = self.__prepare(raw_params)
+        mean, log_std = params
         eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
-        return mean + eps * torch.exp(log_std)
+        return params, mean + eps * torch.exp(log_std)
 
-    def mvd_sample(self, params, size):
-        mean, log_std = self.__prepare(params)
+    def mvd_sample(self, raw_params, size):
+        params = self.__prepare(raw_params)
+        mean, log_std = params
         std = torch.exp(log_std)
         mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
         cov_pos_samples, cov_neg_samples = self.__cov_samples(size, std)
         pos_samples = torch.stack((mean_pos_samples, cov_pos_samples))
         neg_samples = torch.stack((mean_neg_samples, cov_neg_samples))
-        return torch.stack((pos_samples, neg_samples))
+        return params, torch.stack((mean, log_std)), torch.stack((pos_samples, neg_samples))
+
+    def pdf(self, params):
+        mean, log_std = self.__prepare(params)
+        x = torch.tensor(np.linspace(-1.5, 2.5, 200))
+        return x, scipy.stats.norm.pdf(x, mean, torch.exp(log_std))
 
     def _mvd_constant(self, params):
-        mean, log_std = self.__prepare(params)
+        _, log_std = params
         std = torch.exp(log_std)
         return torch.stack((self.__mean_constant(std), self.__std_constant(std)))
 
     def kl(self, params):
-        mean, log_std = self.__prepare(params)
+        mean, log_std = params
         log_cov = 2 * log_std
         return 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov).sum(dim=1)
 
     def log_prob(self, params, samples):
-        mean, log_std = self.__prepare(params)
+        mean, log_std = params
         cov = torch.exp(2 * log_std)
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(cov))
         return dist.log_prob(samples)
 
     def __prepare(self, params):
-        return torch.split(params, self.param_dims, dim=-1)
+        return torch.stack(torch.split(params, self.param_dims, dim=-1))
 
     def __mean_samples(self, sample_size, mean, std, coupled=True):
         pos_samples = self.__sample_weibull(sample_size, mean.shape)

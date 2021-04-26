@@ -8,22 +8,21 @@ class Exponential(Distribution):
         samples = dist.rsample((size,)) if with_grad else dist.sample((size,))
         return samples.to(self.device)
 
-    def mvd_sample(self, params, size):
-        rate = self._as_rate(params)
+    def mvd_sample(self, raw_params, size):
+        rate = self._as_rate(raw_params)
         pos_samples = self.__sample_exponential(size, rate)
         neg_samples = self.__sample_negative(size, rate)
         samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
-        return samples + rate
+        return rate, samples + rate
 
     def _mvd_constant(self, params):
         return 1. / self._as_rate(params)
 
     def kl(self, params):
-        log_rate, = params
-        return (torch.exp(log_rate) - log_rate - 1).sum(dim=1)
+        return (params - torch.log(params) - 1).sum(dim=1)
 
     def log_prob(self, params, samples):
-        return torch.distributions.Exponential(self._as_rate(params)).log_prob(samples).sum(dim=-1)
+        return torch.distributions.Exponential(params).log_prob(samples).sum(dim=-1)
 
     @staticmethod
     def _as_rate(params):

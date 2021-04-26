@@ -9,8 +9,8 @@ class Reinforce(MCEstimator):
         self.__loss_avg = None
 
     def _sample(self, params):
-        self._samples = self.distribution.sample(params, self.sample_size, with_grad=False)
-        return self._samples
+        params, self._samples = self.distribution.sample(params, self.sample_size, with_grad=False)
+        return params, self._samples
 
     def _backward(self, params, losses, retain_graph):
         if self._samples is None:

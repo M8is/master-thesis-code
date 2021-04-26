@@ -41,7 +41,7 @@ def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent
         train_losses.save()
         test_losses.save()
         torch.save(vae_network, file_name)
-        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1]:.2f}, Test loss: {test_losses.numpy()[-1]:.2f}",
+        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy().mean():.2f}, Test loss: {test_losses.numpy().mean():.2f}",
               flush=True)
     train_losses.plot()
     test_losses.plot()

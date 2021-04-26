@@ -8,19 +8,22 @@ class Distribution(ABC):
 
     def mvd_grad(self, params, losses):
         pos_losses, neg_losses = losses
-        delta = (pos_losses - neg_losses).mean(dim=1).transpose(-2, -1)
+        delta = (pos_losses - neg_losses).mean(dim=1).sum(dim=-1).transpose(-3, -2)
         c = self._mvd_constant(params)
         grad = c * delta
         if len(params) <= 1:
             grad.unsqueeze_(0)
         return grad
 
+    def pdf(self, params):
+        raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")
+
     @abstractmethod
-    def sample(self, params, size=1, with_grad=False):
+    def sample(self, raw_params, size=1, with_grad=False):
         pass
 
     @abstractmethod
-    def mvd_sample(self, params, size):
+    def mvd_sample(self, raw_params, size):
         pass
 
     @abstractmethod

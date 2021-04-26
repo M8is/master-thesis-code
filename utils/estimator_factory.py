@@ -15,6 +15,7 @@ estimators = {
 
 distributions = {
     'multivariatenormal': normal.MultivariateNormal,
+    'normal': normal.MultivariateNormal,
     'exponential': exponential.Exponential,
     'poisson': poisson.Poisson,
     'bernoulli': bernoulli.Bernoulli,
