@@ -6,31 +6,32 @@ from .distribution_base import Distribution
 
 class Categorical(Distribution):
     def sample(self, raw_params, size=1, with_grad=False):
-        probs = self.__as_probs(raw_params.squeeze(1))
+        probs = self.__as_probs(raw_params.squeeze())
         if with_grad:
             log_probs = torch.log(probs)
-            # TODO: convert one-hot back to range
-            return probs, F.gumbel_softmax(log_probs)
+            # TODO: test this
+            return probs, torch.argmax(F.gumbel_softmax(log_probs))
         else:
             return probs, torch.distributions.Categorical(probs).sample((size,))
 
     def mvd_sample(self, raw_params, size):
         if size > 1:
-            print("Warning: Categorical ignores sample sizes greater than one.")
-        return self.__as_probs(raw_params.squeeze(1)), torch.tensor(range(raw_params.size(-1)),
-                                                                    device=self.device).reshape(1, 1, -1)
+            print("Warning: Categorical MVD ignores sample sizes greater than one.")
+        params = self.__as_probs(raw_params)
+        return params, torch.arange(params.size(-1), device=self.device)
 
     def mvd_grad(self, params, losses):
-        losses.mean(dim=0)
+        while losses.shape != params.shape and len(losses.shape) > len(params.shape):
+            losses = losses.mean(dim=-1)
+        assert losses.shape == params.shape
 
-        last_only = False
+        last_only = True
         if last_only:
-            neg_grad = losses[:,-1]
-            return losses - neg_grad
+            return losses - losses[:, -1]
         else:
             n_classes = params.size(-1)
-            neg_grad = (1 / (n_classes - 1)) * (losses.diag() - losses).T.sum(dim=-1)
-            return losses - neg_grad
+            neg_loss_sum_of_other_classes = (losses.diag_embed() - losses.unsqueeze(-1)).transpose(-2, -1).sum(dim=-1)
+            return losses - (1 / (n_classes - 1)) * neg_loss_sum_of_other_classes
 
     def pdf(self, params):
         x = torch.tensor(range(params.size(-1)))

@@ -1,12 +1,23 @@
 task: 'polynomial'
 seed: 2930489
-mc_estimator: 'Pathwise'
+mc_estimator: 'MVD'
+selector_estimator: 'MVD'
 distribution: 'GaussianMixture'
 param_dims:
   - 3
   - 1
   - 1
+init_params:
+  - 0.3333
+  - 0.3333
+  - 0.3334
+  - -1.0
+  - 0.1
+  - 0.0
+  - 0.1
+  - 2.0
+  - 0.1
 epochs: 500
-sample_size: 10
-learning_rate: 0.01
+sample_size: 1
+learning_rate: 0.001
 device: 'cuda:0'

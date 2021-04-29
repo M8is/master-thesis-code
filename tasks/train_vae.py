@@ -2,6 +2,7 @@ from os import path, makedirs
 
 import torch
 import torch.utils.data
+from torchvision.utils import save_image
 
 import models.vae
 from utils.data_holder import DataHolder
@@ -35,16 +36,18 @@ def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent
     test_losses = LossHolder(results_dir, train=False)
     for epoch in range(1, epochs + 1):
         train_loss, test_loss = __train_epoch(vae_network, data_holder, device, optimizer)
-        train_losses.add(train_loss)
-        test_losses.add(test_loss)
+        train_losses.add(train_loss.mean())
+        test_losses.add(test_loss.mean())
         file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
         train_losses.save()
         test_losses.save()
         torch.save(vae_network, file_name)
-        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy().mean():.2f}, Test loss: {test_losses.numpy().mean():.2f}",
+        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1]:.2f}, "
+              f"Test loss: {test_losses.numpy()[-1]:.2f}",
               flush=True)
     train_losses.plot()
     test_losses.plot()
+    __generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, device)
 
 
 def __train_epoch(vae_model, data_holder, device, optimizer):
@@ -79,12 +82,12 @@ def __test_epoch(vae_model, data_holder, device):
 
 
 def get_estimator_stds(seed, dataset, device, latent_dim, sample_size, learning_rate, mc_estimator, distribution,
-                       batch_size, hidden_dim, **_):
+                       batch_size, hidden_dim, param_dims, **_):
     print(f'Generating standard deviation for {mc_estimator}.')
     fix_random_seed(seed)
     data_holder = DataHolder.get(dataset, batch_size)
-    estimator = get_estimator(mc_estimator, distribution, sample_size, device)
-    encoder = models.vae.Encoder(data_holder.dims, hidden_dim, (latent_dim, latent_dim))
+    estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims)
+    encoder = models.vae.Encoder(data_holder.dims, hidden_dim, param_dims)
     decoder = models.vae.Decoder(data_holder.dims, hidden_dim, latent_dim)
     vae_network = models.vae.VAE(encoder, decoder, estimator)
     optimizer = torch.optim.SGD(vae_network.parameters(), lr=learning_rate)
@@ -117,4 +120,30 @@ def get_estimator_stds(seed, dataset, device, latent_dim, sample_size, learning_
 def __bce_loss(x, x_pred):
     # Use no reduction to get separate losses for each image
     binary_cross_entropy = torch.nn.BCELoss(reduction='none')
-    return binary_cross_entropy(x_pred, x.expand_as(x_pred)).sum(dim=-1)
+    x_expanded = x.expand_as(x_pred.transpose(1, -2)).transpose(1, -2)
+    return binary_cross_entropy(x_pred, x_expanded).sum(dim=-1)
+
+
+def __generate_images(results_dir, dataset, epochs, mc_estimator, batch_size, device):
+    for epoch in range(1, epochs + 1):
+        model_file_path = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
+        if not path.exists(model_file_path):
+            continue  # Skip silently if model does not exist
+        model = torch.load(model_file_path).eval()
+
+        out_dir = path.join(results_dir, f'images_{epoch}')
+        if not path.exists(out_dir):
+            makedirs(out_dir)
+        else:
+            print(f"Skipping: '{out_dir}' already exists.")
+            continue
+
+        data_holder = DataHolder.get(dataset, batch_size)
+
+        print(f'Generating images for `{model_file_path}` in `{out_dir}`...')
+        for batch_id, (x_batch, _) in enumerate(data_holder.test):
+            n = min(x_batch.size(0), 8)
+            x_batch = x_batch[:n].view(-1, data_holder.dims).to(device)
+            _, x_pred_batch = model(x_batch)
+            comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
+            save_image(comparison, path.join(out_dir, f'recon_{batch_id}.png'), nrow=n)

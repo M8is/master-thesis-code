@@ -1,10 +1,14 @@
 task: 'polynomial'
 seed: 2930489
 mc_estimator: 'mvd'
-distribution: 'categorical'
+distribution: 'normal'
 param_dims:
-  - 4
-epochs: 1000
+  - 1
+  - 1
+init_params:
+  - 0.1
+  - -1
+epochs: 500
 sample_size: 1
-learning_rate: 0.1
+learning_rate: 0.01
 device: 'cuda:0'

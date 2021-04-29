@@ -6,6 +6,10 @@ from .distribution_base import Distribution
 
 
 class MultivariateNormal(Distribution):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.train_std = True
+
     def sample(self, raw_params, size=1, with_grad=False):
         params = self.__prepare(raw_params)
         mean, log_std = params
@@ -18,24 +22,37 @@ class MultivariateNormal(Distribution):
         std = torch.exp(log_std)
         mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
         cov_pos_samples, cov_neg_samples = self.__cov_samples(size, std)
-        pos_samples = torch.stack((mean_pos_samples, cov_pos_samples))
-        neg_samples = torch.stack((mean_neg_samples, cov_neg_samples))
-        return params, torch.stack((mean, log_std)), torch.stack((pos_samples, neg_samples))
+        pos_samples = torch.stack((mean_pos_samples, cov_pos_samples), dim=-2)
+        neg_samples = torch.stack((mean_neg_samples, cov_neg_samples), dim=-2)
+        return params, torch.stack((pos_samples, neg_samples), dim=-2)
 
     def pdf(self, params):
-        mean, log_std = self.__prepare(params)
-        x = torch.tensor(np.linspace(-1.5, 2.5, 200))
-        return x, scipy.stats.norm.pdf(x, mean, torch.exp(log_std))
+        mean, log_std = params.cpu()
+        std = torch.exp(log_std)
+        dims = params.size(-1)
+        if dims == 1:
+            linspace = np.linspace(-3, 3, 300)
+            return linspace, scipy.stats.norm.pdf(linspace, mean, std)
+        elif dims == 2:
+            x, y = np.mgrid[-3:3:.05, -3:3:.05]
+            grid = np.dstack((x, y))
+            rv = scipy.stats.multivariate_normal(mean, std.diag_embed())
+            return (x, y), rv.pdf(grid)
+        else:
+            raise ValueError(f"Plotting is not supported for {dims}-dimensional gaussians.")
 
     def _mvd_constant(self, params):
         _, log_std = params
         std = torch.exp(log_std)
-        return torch.stack((self.__mean_constant(std), self.__std_constant(std)))
+        mean_constant = self.__mean_constant(std)
+        std_constant = self.__std_constant(std) if self.train_std else torch.zeros_like(mean_constant)
+        return torch.stack((mean_constant, std_constant))
 
     def kl(self, params):
         mean, log_std = params
         log_cov = 2 * log_std
-        return 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov).sum(dim=1)
+        kl = 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov)
+        return kl.sum(dim=1) if len(kl.shape) > 1 else kl
 
     def log_prob(self, params, samples):
         mean, log_std = params
@@ -49,14 +66,14 @@ class MultivariateNormal(Distribution):
     def __mean_samples(self, sample_size, mean, std, coupled=True):
         pos_samples = self.__sample_weibull(sample_size, mean.shape)
         neg_samples = pos_samples if coupled else self.__sample_weibull(sample_size, mean.shape)
-        samples = torch.diag_embed(torch.stack((pos_samples, -neg_samples)) * std).transpose(2, 3)
-        return samples + mean
+        samples = torch.diag_embed(torch.stack((pos_samples, -neg_samples)) * std)
+        return samples + mean.unsqueeze(-1)
 
     def __cov_samples(self, sample_size, std, coupled=True):
         pos_samples = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
         neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if coupled \
             else self.__sample_standard_normal(sample_size, std.shape)
-        return torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
+        return torch.diag_embed(torch.stack((pos_samples, neg_samples)))
 
     def __sample_weibull(self, sample_size, shape):
         return torch.distributions.Weibull(np.sqrt(2.), concentration=2.).sample((sample_size, *shape)).to(self.device)

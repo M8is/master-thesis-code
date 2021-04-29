@@ -5,9 +5,8 @@ from os import path
 import torch
 import yaml
 
-from tasks.generate_images import generate_images_vae
 from tasks.train_log_reg import train_log_reg
-from tasks.train_polynomial import train_parabola
+from tasks.train_polynomial import train_polynomial
 from tasks.train_vae import train_vae, get_estimator_stds
 from utils.clean import clean
 
@@ -39,11 +38,10 @@ def main(args):
                 print(get_estimator_stds(**config))
             elif config['task'] == 'vae':
                 train_vae(**config)
-                generate_images_vae(**config)
             elif config['task'] == 'logreg':
                 train_log_reg(**config)
             elif config['task'] == 'polynomial':
-                train_parabola(**config)
+                train_polynomial(**config)
 
             configs.append(config)
         except Exception as e:

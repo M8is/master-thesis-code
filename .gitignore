@@ -345,6 +345,8 @@ data/
 *.pt
 *.pkl
 *.svg
+*.png
+*.jpg
 
 # Ignore vscode files
 .vscode/

@@ -7,8 +7,8 @@ class Distribution(ABC):
         self.device = device
 
     def mvd_grad(self, params, losses):
-        pos_losses, neg_losses = losses
-        delta = (pos_losses - neg_losses).mean(dim=1).sum(dim=-1).transpose(-3, -2)
+        pos_losses, neg_losses = losses.unbind(dim=-2)
+        delta = (pos_losses - neg_losses).mean(dim=0).permute(2, 0, 1)
         c = self._mvd_constant(params)
         grad = c * delta
         if len(params) <= 1:
