@@ -9,10 +9,15 @@ class LinearProbabilistic(torch.nn.Module):
         self.with_kl = with_kl
 
     def forward(self, x):
-        return self.probabilistic(self.linear(x))
+        raw_params = self.linear(x)
+        if self.training:
+            samples = self.probabilistic(raw_params)
+        else:
+            samples = self.probabilistic.distribution.sample(raw_params, with_grad=False)
+        return raw_params, samples
 
-    def backward(self, params, losses):
-        self.probabilistic.backward(params, losses.detach(), retain_graph=True)
+    def backward(self, raw_params, losses):
+        self.probabilistic.backward(raw_params, losses.detach(), retain_graph=True)
         if losses.requires_grad:
             losses.mean().backward()
 
@@ -25,9 +30,13 @@ class PureProbabilistic(torch.nn.Module):
         self.with_kl = with_kl
 
     def forward(self):
-        return self.probabilistic(self.raw_params)
+        if self.training:
+            samples = self.probabilistic(self.raw_params)
+        else:
+            samples = self.probabilistic.distribution.sample(self.raw_params, with_grad=False)
+        return self.raw_params, samples
 
-    def backward(self, params, losses):
-        self.probabilistic.backward(params, losses.detach(), retain_graph=True)
+    def backward(self, raw_params, losses):
+        self.probabilistic.backward(raw_params, losses.detach(), retain_graph=True)
         if losses.requires_grad:
             losses.mean().backward()

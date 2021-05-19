@@ -7,7 +7,7 @@ import yaml
 
 from tasks.train_log_reg import train_log_reg
 from tasks.train_polynomial import train_polynomial
-from tasks.train_vae import train_vae, get_estimator_stds
+from tasks.train_vae import train_vae
 from utils.clean import clean
 
 
@@ -34,9 +34,7 @@ def main(args):
             if args.clean:
                 clean(**config)
 
-            if args.gradstds == 'gradstds':
-                print(get_estimator_stds(**config))
-            elif config['task'] == 'vae':
+            if config['task'] == 'vae':
                 train_vae(**config)
             elif config['task'] == 'logreg':
                 train_log_reg(**config)

@@ -1,14 +1,14 @@
 task: 'polynomial'
 seed: 2930489
 mc_estimator: 'pathwise'
-distribution: 'MultivariateNormal'
+distribution: 'normal'
 param_dims:
   - 1
   - 1
 init_params:
-  - -1.0
   - 0.1
-epochs: 500
-sample_size: 1
+  - -1
+epochs: 100
+sample_size: 7
 learning_rate: 0.001
 device: 'cuda:0'

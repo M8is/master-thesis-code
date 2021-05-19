@@ -8,28 +8,11 @@ from .distribution_base import Distribution
 class MultivariateNormal(Distribution):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.train_std = True
 
-    def sample(self, raw_params, size=1, with_grad=False):
-        params = self.__prepare(raw_params)
-        mean, log_std = params
-        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
-        return params, mean + eps * torch.exp(log_std)
-
-    def mvd_sample(self, raw_params, size):
-        params = self.__prepare(raw_params)
-        mean, log_std = params
-        std = torch.exp(log_std)
-        mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
-        cov_pos_samples, cov_neg_samples = self.__cov_samples(size, std)
-        pos_samples = torch.stack((mean_pos_samples, cov_pos_samples), dim=-2)
-        neg_samples = torch.stack((mean_neg_samples, cov_neg_samples), dim=-2)
-        return params, torch.stack((pos_samples, neg_samples), dim=-2)
-
-    def pdf(self, params):
-        mean, log_std = params.cpu()
-        std = torch.exp(log_std)
-        dims = params.size(-1)
+    def pdf(self, raw_params):
+        mean, log_std = self.__prepare(raw_params.cpu())
+        std = self.__exp(log_std)
+        dims = mean.size(-1)
         if dims == 1:
             linspace = np.linspace(-3, 3, 300)
             return linspace, scipy.stats.norm.pdf(linspace, mean, std)
@@ -41,27 +24,53 @@ class MultivariateNormal(Distribution):
         else:
             raise ValueError(f"Plotting is not supported for {dims}-dimensional gaussians.")
 
-    def _mvd_constant(self, params):
-        _, log_std = params
-        std = torch.exp(log_std)
-        mean_constant = self.__mean_constant(std)
-        std_constant = self.__std_constant(std) if self.train_std else torch.zeros_like(mean_constant)
-        return torch.stack((mean_constant, std_constant))
-
-    def kl(self, params):
+    def sample(self, raw_params, size=1, with_grad=False):
+        params = self.__prepare(raw_params)
         mean, log_std = params
+        std = self.__exp(log_std)
+        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
+        return mean + eps * std
+
+    def mvd_sample(self, raw_params, size):
+        mean, log_std = self.__prepare(raw_params)
+        std = self.__exp(log_std)
+        mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
+        cov_pos_samples, cov_neg_samples = self.__cov_samples(size, std)
+        pos_samples = torch.stack((mean_pos_samples, cov_pos_samples))
+        neg_samples = torch.stack((mean_neg_samples, cov_neg_samples))
+        return torch.stack((pos_samples, neg_samples)).transpose(-2, -3)
+
+    def mvd_backward(self, raw_params, losses, retain_graph):
+        params = self.__prepare(raw_params).mean(dim=1)
+        with torch.no_grad():
+            pos_losses, neg_losses = losses
+            c = self.__mvd_c(params[1])
+            grad = c * (pos_losses - neg_losses).mean(dim=1)
+        assert grad.shape == params.shape, f"Grad shape {grad.shape} != params shape {params.shape}"
+        params.backward(gradient=grad, retain_graph=retain_graph)
+
+    def __mvd_c(self, log_std):
+        std = self.__exp(log_std)
+        return torch.stack((self.__mean_c(std), self.__std_c(std)))
+
+    def kl(self, raw_params):
+        mean, log_std = self.__prepare(raw_params)
         log_cov = 2 * log_std
-        kl = 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov)
+        kl = 0.5 * (mean ** 2 + self.__exp(log_cov) - 1 - log_cov)
         return kl.sum(dim=1) if len(kl.shape) > 1 else kl
 
-    def log_prob(self, params, samples):
-        mean, log_std = params
-        cov = torch.exp(2 * log_std)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(cov))
+    def log_prob(self, raw_params, samples):
+        mean, log_std = self.__prepare(raw_params)
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(self.__exp(2 * log_std)))
         return dist.log_prob(samples)
 
     def __prepare(self, params):
         return torch.stack(torch.split(params, self.param_dims, dim=-1))
+
+    @staticmethod
+    def __exp(x):
+        eps = 1e-30
+        return torch.max(torch.exp(x), eps * torch.ones_like(x))
 
     def __mean_samples(self, sample_size, mean, std, coupled=True):
         pos_samples = self.__sample_weibull(sample_size, mean.shape)
@@ -107,9 +116,9 @@ class MultivariateNormal(Distribution):
         return torch.distributions.Normal(0, 1).sample((sample_size, *shape)).to(self.device)
 
     @staticmethod
-    def __mean_constant(std):
+    def __mean_c(std):
         return 1. / (np.sqrt(2 * np.pi) * std)
 
     @staticmethod
-    def __std_constant(std):
+    def __std_c(std):
         return 1. / std

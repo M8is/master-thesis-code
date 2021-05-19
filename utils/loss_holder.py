@@ -19,7 +19,7 @@ class LossHolder:
             self.losses = []
 
     def add(self, loss):
-        self.losses.append(loss.cpu())
+        self.losses.append(loss.cpu().unsqueeze(0))
 
     def save(self):
         with open(self.__file_path, 'wb') as f:
@@ -27,12 +27,12 @@ class LossHolder:
 
     def numpy(self) -> np.array:
         with torch.no_grad():
-            return torch.stack(self.losses).numpy()
+            return torch.cat(self.losses).numpy()
 
     def plot(self, logscale=True):
         print(f"Plotting '{self.__plot_file}'.")
         if logscale:
             plt.yscale('log')
-        plt.plot(self.numpy())
+        plt.plot(self.numpy().flatten())
         plt.savefig(self.__plot_file)
         plt.clf()

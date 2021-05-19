@@ -11,15 +11,17 @@ class VAE(torch.nn.Module):
 
     def forward(self, x):
         raw_params = self.encoder(x)
-        params, samples = self.probabilistic(raw_params) if self.training else self.probabilistic.distribution.sample(
-            raw_params)
-        replications = self.decoder(samples)
-        return params, replications
+        if self.training:
+            samples = self.probabilistic(raw_params)
+        else:
+            samples = self.probabilistic.distribution.sample(raw_params, with_grad=False)
+        return raw_params, self.decoder(samples)
 
-    def backward(self, params, losses):
-        self.probabilistic.distribution.kl(params).mean().backward(retain_graph=True)
+    def backward(self, raw_params, losses):
+        # Mean over batch
+        losses = losses.mean(dim=-1)
         # Set encoder gradients.
-        self.probabilistic.backward(params, losses.detach())
+        self.probabilistic.backward(raw_params, losses.detach(), retain_graph=True)
         # Set decoder gradients. Also sets encoder gradients, if samples where not detached.
         losses.mean().backward()
 

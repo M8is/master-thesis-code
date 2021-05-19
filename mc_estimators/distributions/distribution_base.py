@@ -6,16 +6,11 @@ class Distribution(ABC):
         self.param_dims = param_dims
         self.device = device
 
-    def mvd_grad(self, params, losses):
-        pos_losses, neg_losses = losses.unbind(dim=-2)
-        delta = (pos_losses - neg_losses).mean(dim=0).permute(2, 0, 1)
-        c = self._mvd_constant(params)
-        grad = c * delta
-        if len(params) <= 1:
-            grad.unsqueeze_(0)
-        return grad
+    @abstractmethod
+    def mvd_backward(self, raw_params, losses, retain_graph):
+        pass
 
-    def pdf(self, params):
+    def pdf(self, raw_params):
         raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")
 
     @abstractmethod
@@ -27,13 +22,9 @@ class Distribution(ABC):
         pass
 
     @abstractmethod
-    def kl(self, params):
+    def kl(self, raw_params):
         pass
 
     @abstractmethod
-    def log_prob(self, params, samples):
-        pass
-
-    @abstractmethod
-    def _mvd_constant(self, params):
+    def log_prob(self, raw_params, samples):
         pass

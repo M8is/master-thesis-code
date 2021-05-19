@@ -19,16 +19,16 @@ class DiscreteMixture(torch.nn.Module):
     def forward(self, raw_params):
         raw_params = raw_params.split(self.param_dims, dim=-1)
         raw_selector_params = raw_params[0]
-        selector_params, selected_components = self.selector(raw_selector_params)
+        selected_components = self.selector(raw_selector_params)
         raw_component_params = torch.stack(raw_params[1:])
         selected_raw_component_params = raw_component_params[selected_components]
-        component_params, samples = self.component(selected_raw_component_params)
-        return (selector_params, component_params), samples
+        samples = self.component(selected_raw_component_params)
+        return (raw_selector_params, selected_raw_component_params), samples
 
-    def backward(self, params, losses, retain_graph=False):
-        selector_params, component_params = params
+    def backward(self, raw_params, losses, retain_graph=False):
+        selector_params, component_params = raw_params
         if self.with_kl:
-            self.kl(params).mean().backward(retain_graph=True)
+            self.kl(raw_params).mean().backward(retain_graph=True)
         if losses.requires_grad:
             losses.backward()
         self.component.backward(component_params, losses.detach(), retain_graph=True)

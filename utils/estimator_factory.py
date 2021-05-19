@@ -47,12 +47,10 @@ def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, d
         selector = estimators[selector_tag](distributions['categorical'](param_dims[:1], device), 1, **kwargs)
         component = estimators[estimator_tag](distributions['multivariatenormal'](param_dims[1:], device), sample_size,
                                               device, **kwargs)
-        component.distribution.train_std = kwargs["train_std"] if "train_std" in kwargs else True
         return DiscreteMixture(selector, component, *args, **kwargs)
     else:
         estimator = estimators[estimator_tag]
         if distribution_tag not in distributions:
             raise ValueError(f'Distribution {distribution_tag} not available for estimator {estimator_tag}.')
         distribution = distributions[distribution_tag](param_dims, device)
-        distribution.train_std = kwargs["train_std"] if "train_std" in kwargs else True
         return estimator(distribution, sample_size, *args, **kwargs)

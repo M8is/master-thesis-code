@@ -1,0 +1,13 @@
+seed: 2930489
+dataset: 'cancer'
+batch_size: 32
+mc_estimator: 'reinforce'
+distribution: 'MultivariateNormal'
+param_dims:
+  - 30
+  - 30
+epochs: 100
+sample_size: 50
+learning_rate: 0.001
+with_baseline: False
+device: 'cuda:0'
