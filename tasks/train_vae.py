@@ -40,10 +40,10 @@ def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent
             train_losses.save()
             test_losses.save()
             torch.save(vae_network, file_name)
+            __generate_images(vae_network, path.join(results_dir, f'images_{epoch}'), data_holder, device)
             print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
                   f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
                   flush=True)
-        __generate_images(vae_network, path.join(results_dir, f'images'), data_holder, device)
 
     return train_losses, test_losses
 
@@ -57,11 +57,14 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         params, x_preds = vae_model(x_batch)
         losses = __bce_loss(x_batch, x_preds)
         optimizer.zero_grad()
+        losses = losses.mean(dim=-1)  # Mean over batch
         vae_model.backward(params, losses)
         kl = vae_model.probabilistic.distribution.kl(params)
-        train_losses.append((losses.detach().mean() + kl.detach().mean()))
-        test_losses.append(__test_epoch(vae_model, data_holder, device))
+        train_loss = losses.detach().mean() + kl.detach().mean()
+        print(f"Train: {train_loss:.1f}", end='\r', flush=True)
+        train_losses.append(train_loss)
         optimizer.step()
+    test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
 
@@ -73,7 +76,6 @@ def __test_epoch(vae_model, data_holder, device):
             params, x_preds = vae_model(x_batch)
             losses = __bce_loss(x_batch, x_preds) + vae_model.probabilistic.distribution.kl(params)
             test_losses.append(losses.detach().mean())
-            break  # TODO: delete after debugging
         return torch.tensor(test_losses).mean()
 
 

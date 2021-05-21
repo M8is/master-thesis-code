@@ -26,7 +26,7 @@ def main(args):
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
             if 'results_dir' not in config:
-                config['results_dir'] = path.splitext(config_path)[0]
+                config['results_dir'] = path.splitext(config_path)[0].replace('config', 'results')
 
             dev = 'cpu'
             if 'device' in config and torch.cuda.is_available():
@@ -56,14 +56,13 @@ def main(args):
             print(e)
             traceback.print_exc()
             continue
-    plot_losses(args.plots, train_losses, test_losses, args.logscale)
+    plot_losses(path.join('results', 'plots'), train_losses, test_losses, args.logscale)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Variational Auto Encoder')
     parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
     parser.add_argument('-cs', default=None, help='use a set of config files from config/configs.yaml')
-    parser.add_argument('-plots', default=path.join('config', 'plots'), help='where general plots will be output')
     parser.add_argument('--clean', action='store_true',
                         help='WARNING: deletes all result directories and starts a clean run')
     parser.add_argument('--logscale', action='store_true', help='plot losses with logarithmic scale')

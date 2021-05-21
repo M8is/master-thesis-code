@@ -18,8 +18,6 @@ class VAE(torch.nn.Module):
         return raw_params, self.decoder(samples)
 
     def backward(self, raw_params, losses):
-        # Mean over batch
-        losses = losses.mean(dim=-1)
         # Set encoder gradients.
         self.probabilistic.backward(raw_params, losses.detach(), retain_graph=True)
         # Set decoder gradients. Also sets encoder gradients, if samples where not detached.

@@ -6,6 +6,9 @@ from .distribution_base import Distribution
 
 
 class MultivariateNormal(Distribution):
+    MIN_LOG_STD = -10
+    MAX_LOG_STD = 6
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -25,17 +28,14 @@ class MultivariateNormal(Distribution):
             raise ValueError(f"Plotting is not supported for {dims}-dimensional gaussians.")
 
     def sample(self, raw_params, size=1, with_grad=False):
-        params = self.__prepare(raw_params)
-        mean, log_std = params
-        std = self.__exp(log_std)
+        mean, std = self.__prepare(raw_params)
         eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
         return mean + eps * std
 
     def mvd_sample(self, raw_params, size):
-        mean, log_std = self.__prepare(raw_params)
-        std = self.__exp(log_std)
+        mean, std = self.__prepare(raw_params)
         mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
-        cov_pos_samples, cov_neg_samples = self.__cov_samples(size, std)
+        cov_pos_samples, cov_neg_samples = self.__std_samples(size, mean, std)
         pos_samples = torch.stack((mean_pos_samples, cov_pos_samples))
         neg_samples = torch.stack((mean_neg_samples, cov_neg_samples))
         return torch.stack((pos_samples, neg_samples)).transpose(-2, -3)
@@ -49,28 +49,27 @@ class MultivariateNormal(Distribution):
         assert grad.shape == params.shape, f"Grad shape {grad.shape} != params shape {params.shape}"
         params.backward(gradient=grad, retain_graph=retain_graph)
 
-    def __mvd_c(self, log_std):
-        std = self.__exp(log_std)
+    def __mvd_c(self, std):
         return torch.stack((self.__mean_c(std), self.__std_c(std)))
 
     def kl(self, raw_params):
-        mean, log_std = self.__prepare(raw_params)
+        mean, log_std = self.__prepare(raw_params, keep_log_std=True)
         log_cov = 2 * log_std
-        kl = 0.5 * (mean ** 2 + self.__exp(log_cov) - 1 - log_cov)
+        kl = 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov)
         return kl.sum(dim=1) if len(kl.shape) > 1 else kl
 
     def log_prob(self, raw_params, samples):
-        mean, log_std = self.__prepare(raw_params)
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(self.__exp(2 * log_std)))
+        mean, std = self.__prepare(raw_params)
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std**2))
         return dist.log_prob(samples)
 
-    def __prepare(self, params):
-        return torch.stack(torch.split(params, self.param_dims, dim=-1))
-
-    @staticmethod
-    def __exp(x):
-        eps = 1e-30
-        return torch.max(torch.exp(x), eps * torch.ones_like(x))
+    def __prepare(self, params, keep_log_std=False):
+        mean, log_std = torch.split(params, self.param_dims, dim=-1)
+        log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
+        if not keep_log_std:
+            return torch.stack((mean, torch.exp(log_std)))
+        else:
+            return torch.stack((mean, log_std))
 
     def __mean_samples(self, sample_size, mean, std, coupled=True):
         pos_samples = self.__sample_weibull(sample_size, mean.shape)
@@ -78,10 +77,12 @@ class MultivariateNormal(Distribution):
         samples = torch.diag_embed(torch.stack((pos_samples, -neg_samples)) * std)
         return samples + mean.unsqueeze(-1)
 
-    def __cov_samples(self, sample_size, std, coupled=True):
+    def __std_samples(self, sample_size, mean, std, coupled=True):
         pos_samples = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
         neg_samples = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_samples) if coupled \
             else self.__sample_standard_normal(sample_size, std.shape)
+        pos_samples = mean + std * pos_samples
+        neg_samples = mean + std * neg_samples
         return torch.diag_embed(torch.stack((pos_samples, neg_samples)))
 
     def __sample_weibull(self, sample_size, shape):

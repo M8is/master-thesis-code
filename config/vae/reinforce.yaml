@@ -4,12 +4,12 @@ dataset: 'MNIST'
 batch_size: 64
 mc_estimator: 'reinforce'
 distribution: 'MultivariateNormal'
-hidden_dim: 100
+hidden_dim: 300
 param_dims:
   - 15
   - 15
 latent_dim: 15
-epochs: 10
-sample_size: 1000
-learning_rate: 0.000001
+epochs: 20
+sample_size: 100
+learning_rate: 0.001
 device: 'cuda'
