@@ -14,41 +14,38 @@ from utils.seeds import fix_random_seed
 
 def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent_dim, epochs, sample_size,
               learning_rate, mc_estimator, distribution, batch_size, **kwargs):
-    if not path.exists(results_dir):
-        makedirs(results_dir)
-    else:
-        print(f"Skipping: '{results_dir}' already exists.")
-        return
-
-    fix_random_seed(seed)
-    data_holder = DataHolder.get(dataset, batch_size)
-
-    # Create model
-    estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
-    encoder = models.vae.Encoder(data_holder.dims, hidden_dim, param_dims)
-    decoder = models.vae.Decoder(data_holder.dims, hidden_dim, latent_dim)
-    vae_network = models.vae.VAE(encoder, decoder, estimator).to(device)
-    optimizer = torch.optim.Adam(vae_network.parameters(), lr=learning_rate)
-
-    print(f'Training with {estimator}.')
-
-    # Train
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
-    for epoch in range(1, epochs + 1):
-        train_loss, test_loss = __train_epoch(vae_network, data_holder, device, optimizer)
-        train_losses.add(train_loss)
-        test_losses.add(test_loss)
-        file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
-        train_losses.save()
-        test_losses.save()
-        torch.save(vae_network, file_name)
-        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
-              f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
-              flush=True)
-    train_losses.plot()
-    test_losses.plot()
-    __generate_images(vae_network, path.join(results_dir, f'images_{epochs}'), data_holder, device)
+
+    if path.exists(results_dir):
+        print(f"Skipping training: '{results_dir}' already exists")
+    else:
+        makedirs(results_dir)
+        fix_random_seed(seed)
+        data_holder = DataHolder.get(dataset, batch_size)
+
+        # Create model
+        estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
+        encoder = models.vae.Encoder(data_holder.dims, hidden_dim, param_dims)
+        decoder = models.vae.Decoder(data_holder.dims, hidden_dim, latent_dim)
+        vae_network = models.vae.VAE(encoder, decoder, estimator).to(device)
+        optimizer = torch.optim.Adam(vae_network.parameters(), lr=learning_rate)
+
+        print(f'Training with {estimator}.')
+        for epoch in range(1, epochs + 1):
+            train_loss, test_loss = __train_epoch(vae_network, data_holder, device, optimizer)
+            train_losses.add(train_loss)
+            test_losses.add(test_loss)
+            file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
+            train_losses.save()
+            test_losses.save()
+            torch.save(vae_network, file_name)
+            print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
+                  f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
+                  flush=True)
+        __generate_images(vae_network, path.join(results_dir, f'images'), data_holder, device)
+
+    return train_losses, test_losses
 
 
 def __train_epoch(vae_model, data_holder, device, optimizer):

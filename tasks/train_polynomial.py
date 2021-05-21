@@ -16,50 +16,47 @@ from utils.seeds import fix_random_seed
 
 def train_polynomial(seed, results_dir, device, epochs, sample_size, learning_rate, mc_estimator, param_dims,
                      distribution, init_params, **kwargs):
-    if not path.exists(results_dir):
-        makedirs(results_dir)
-    else:
-        print(f"Skipping: '{results_dir}' already exists.")
-        return
-
-    fix_random_seed(seed)
-
-    model_params = torch.nn.Parameter(torch.FloatTensor(init_params))
-    grad_mask = torch.FloatTensor(kwargs['grad_mask']).to(device) if 'grad_mask' in kwargs else None
-
-    # Create model
-    estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
-    model = PureProbabilistic(estimator, model_params).to(device)
-    model.train()
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-
-    print(f'Training with {estimator}.')
-
-    __try_plot_pdf(model, 0, results_dir)
-
-    # Train
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
-    for epoch in range(1, epochs + 1):
-        print(f"Epoch: {epoch}/{epochs}", flush=True)
-        raw_params, x = model()
 
-        # TODO: kind of hacky workaround for now
-        if isinstance(model.probabilistic, MVD):
-            x.squeeze_(dim=2).squeeze_(dim=-1)
-        losses = polynomial(x)
-        optimizer.zero_grad()
-        model.backward(raw_params, losses)
-        if grad_mask is not None:
-            model_params.grad *= grad_mask
-        optimizer.step()
-        train_losses.add(losses.detach().mean())
-        test_losses.add(__test_loss(model).mean())
-        if epoch % 100 == 0 or epoch == epochs:
-            __try_plot_pdf(model, epoch, results_dir)
-    train_losses.plot(logscale=False)
-    test_losses.plot(logscale=False)
-    torch.save(model, path.join(results_dir, f'{mc_estimator}_{epochs}.pt'))
+    if path.exists(results_dir):
+        print(f"Skipping training: '{results_dir}' already exists.")
+    else:
+        makedirs(results_dir)
+        fix_random_seed(seed)
+
+        model_params = torch.nn.Parameter(torch.FloatTensor(init_params))
+        grad_mask = torch.FloatTensor(kwargs['grad_mask']).to(device) if 'grad_mask' in kwargs else None
+
+        # Create model
+        estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
+        model = PureProbabilistic(estimator, model_params).to(device)
+        model.train()
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+        print(f'Training with {estimator}.')
+
+        __try_plot_pdf(model, 0, results_dir)
+        for epoch in range(1, epochs + 1):
+            print(f"Epoch: {epoch}/{epochs}", flush=True)
+            raw_params, x = model()
+
+            # TODO: kind of hacky workaround for now
+            if isinstance(model.probabilistic, MVD):
+                x.squeeze_(dim=2).squeeze_(dim=-1)
+            losses = polynomial(x)
+            optimizer.zero_grad()
+            model.backward(raw_params, losses)
+            if grad_mask is not None:
+                model_params.grad *= grad_mask
+            optimizer.step()
+            train_losses.add(losses.detach().mean())
+            test_losses.add(__test_loss(model).mean())
+            if epoch % 100 == 0 or epoch == epochs:
+                __try_plot_pdf(model, epoch, results_dir)
+        torch.save(model, path.join(results_dir, f'{mc_estimator}_{epochs}.pt'))
+
+    return train_losses, test_losses
 
 
 def __test_loss(model):
