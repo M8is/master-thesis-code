@@ -1,3 +1,4 @@
+task: 'logreg'
 seed: 2930489
 dataset: 'cancer'
 batch_size: 32
@@ -9,5 +10,6 @@ param_dims:
 epochs: 100
 sample_size: 50
 learning_rate: 0.001
-with_baseline: False
+baseline: False
+plot_label: 'reinforce no baseline'
 device: 'cuda:0'

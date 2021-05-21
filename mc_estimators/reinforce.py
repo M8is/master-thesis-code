@@ -4,7 +4,7 @@ from .estimator_base import MCEstimator
 class Reinforce(MCEstimator):
     def __init__(self, distribution, sample_size, baseline=True, *args, **kwargs):
         super().__init__(distribution, sample_size, *args, **kwargs)
-        self.with_baseline = baseline and self.sample_size > 1
+        self.baseline = baseline and self.sample_size > 1
         self._samples = None
         self.__loss_avg = None
 
@@ -17,7 +17,7 @@ class Reinforce(MCEstimator):
             raise ValueError("No forward call or multiple backward calls.")
         losses = losses.squeeze()
         log_probs = self.distribution.log_prob(params, self._samples)
-        baseline = self._get_baseline(losses) if self.with_baseline else 0
+        baseline = self._get_baseline(losses) if self.baseline else 0
         if len(log_probs.shape) > 1:
             log_probs = log_probs.mean(dim=-1)
         ((losses - baseline) * log_probs).mean().backward(retain_graph=retain_graph)

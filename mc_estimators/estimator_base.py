@@ -6,7 +6,7 @@ class MCEstimator(ABC, torch.nn.Module):
     def __init__(self, distribution, sample_size, *args, **kwargs):
         super().__init__()
         self.with_kl = kwargs["with_kl"] if "with_kl" in kwargs else True
-        self.with_baseline = kwargs["with_baseline"] if "with_baseline" in kwargs else True
+        self.baseline = kwargs["with_baseline"] if "with_baseline" in kwargs else True
         self.distribution = distribution
         self.param_dims = distribution.param_dims
         self.sample_size = sample_size
