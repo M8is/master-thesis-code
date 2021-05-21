@@ -7,7 +7,7 @@ distribution: 'MultivariateNormal'
 param_dims:
   - 30
   - 30
-epochs: 50
-sample_size: 120
+epochs: 100
+sample_size: 1
 learning_rate: 0.001
 device: 'cuda:0'

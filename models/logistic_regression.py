@@ -13,6 +13,8 @@ class LinearLogisticRegression(torch.nn.Module):
         return raw_params, self.__logistic((x * samples).sum(dim=-1))
 
     def backward(self, raw_params, losses):
+        # Mean over batch
+        losses = losses.mean(dim=-1)
         self.probabilistic.distribution.kl(raw_params).mean().backward(retain_graph=True)
         self.probabilistic.backward(raw_params, losses.detach())
 
