@@ -33,24 +33,17 @@ class MultivariateNormal(Distribution):
 
     def mvd_sample(self, raw_params, size):
         mean, std = self.__prepare(raw_params)
-        mean_pos_samples, mean_neg_samples = self.__mean_samples(size, mean, std)
-        cov_pos_samples, cov_neg_samples = self.__std_samples(size, mean, std)
-        pos_samples = torch.stack((mean_pos_samples, cov_pos_samples))
-        neg_samples = torch.stack((mean_neg_samples, cov_neg_samples))
-        return torch.stack((pos_samples, neg_samples))
+        mean_samples = self.__mean_samples(mean, std, size)
+        std_samples = self.__std_samples(mean, std, size)
+        return torch.stack((mean_samples, std_samples))
 
     def mvd_backward(self, raw_params, losses, retain_graph):
         mean, std = self.__prepare(raw_params)
         with torch.no_grad():
-            pos_losses, neg_losses = losses
-            mean_pos_losses, std_pos_losses = pos_losses
-            mean_neg_losses, std_neg_losses = neg_losses
-            mean_c = self.__mean_c(std)
-            std_c = self.__std_c(std)
-            mean_grad = mean_c * (mean_pos_losses - mean_neg_losses)
-            std_grad = std_c * (std_pos_losses - std_neg_losses)
-        assert mean_grad.shape == mean.shape, f"Grad shape {mean_grad.shape} != params shape {mean.shape}"
-        assert std_grad.shape == std.shape, f"Grad shape {std_grad.shape} != params shape {std.shape}"
+            losses = losses.mean(dim=2).transpose(-2, -1)  # Mean over samples
+            mean_losses, std_losses = losses
+            mean_grad = (mean_losses[0] - mean_losses[1]) / (np.sqrt(2 * np.pi) * std)
+            std_grad = (std_losses[0] - std_losses[1]) / std
         mean.backward(gradient=mean_grad, retain_graph=True)
         std.backward(gradient=std_grad, retain_graph=retain_graph)
 
@@ -70,7 +63,7 @@ class MultivariateNormal(Distribution):
         log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
         return (mean, log_std) if keep_log_std else (mean, torch.exp(log_std))
 
-    def __mean_samples(self, sample_size, mean, std, coupled=False):
+    def __mean_samples(self, mean, std, sample_size, coupled=False):
         pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         pos_weibull = self.__sample_weibull(sample_size, mean.size())
         pos_samples = self.__replace_diagonal(pos_std_normal, pos_weibull)
@@ -81,7 +74,7 @@ class MultivariateNormal(Distribution):
         samples = torch.stack((pos_samples, -neg_samples)).transpose(-3, -2)
         return mean + samples * std
 
-    def __std_samples(self, sample_size, mean, std, coupled=True):
+    def __std_samples(self, mean, std, sample_size, coupled=True):
         pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         pos_maxwell = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
         pos_samples = self.__replace_diagonal(pos_std_normal, pos_maxwell)
@@ -124,11 +117,3 @@ class MultivariateNormal(Distribution):
         """
         dist = torch.distributions.uniform.Uniform(low=0., high=1.)
         return dist.sample(std_dsmaxwell_samples.shape).to(self.device) * std_dsmaxwell_samples
-
-    @staticmethod
-    def __mean_c(std):
-        return 1. / (np.sqrt(2 * np.pi) * std)
-
-    @staticmethod
-    def __std_c(std):
-        return 1. / std
