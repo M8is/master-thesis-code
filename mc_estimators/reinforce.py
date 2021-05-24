@@ -12,11 +12,11 @@ class Reinforce(MCEstimator):
         self._samples = self.distribution.sample(raw_params, self.sample_size, with_grad=False)
         return self._samples
 
-    def _backward(self, params, losses, retain_graph):
+    def _backward(self, raw_params, losses, retain_graph):
         if self._samples is None:
             raise ValueError("No forward call or multiple backward calls.")
         losses = losses.squeeze()
-        log_probs = self.distribution.log_prob(params, self._samples)
+        log_probs = self.distribution.log_prob(raw_params, self._samples)
         baseline = self._get_baseline(losses) if self.baseline else 0
         if len(log_probs.shape) > 1:
             log_probs = log_probs.mean(dim=-1)

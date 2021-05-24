@@ -12,7 +12,7 @@ class MCEstimator(ABC, torch.nn.Module):
         self.sample_size = sample_size
 
     def forward(self, raw_params):
-        return self._sample(raw_params) if self.training else self.distribution.sample(raw_params)
+        return self._sample(raw_params) if self.training else self.distribution.sample(raw_params, with_grad=False)
 
     def backward(self, raw_params, losses, retain_graph=False):
         if self.with_kl:
