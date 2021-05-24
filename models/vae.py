@@ -11,17 +11,14 @@ class VAE(torch.nn.Module):
 
     def forward(self, x):
         raw_params = self.encoder(x)
-        if self.training:
-            samples = self.probabilistic(raw_params)
-        else:
-            samples = self.probabilistic.distribution.sample(raw_params, with_grad=False)
+        samples = self.probabilistic(raw_params)
         return raw_params, self.decoder(samples)
 
     def backward(self, raw_params, losses):
-        # Set encoder gradients.
-        self.probabilistic.backward(raw_params, losses.detach(), retain_graph=True)
         # Set decoder gradients. Also sets encoder gradients, if samples where not detached.
         losses.mean().backward()
+        # Set encoder gradients.
+        self.probabilistic.backward(raw_params, losses.detach())
 
 
 class Encoder(torch.nn.Module):
@@ -29,13 +26,11 @@ class Encoder(torch.nn.Module):
         super().__init__()
         self.input_dim = input_dim
         self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = torch.nn.Linear(hidden_dim, sum(latent_dims))
+        self.fc2 = torch.nn.Linear(hidden_dim, sum(latent_dims))
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x))
-        h2 = F.relu(h1)
-        return self.fc3(h2)
+        return self.fc2(h1)
 
 
 class Decoder(torch.nn.Module):

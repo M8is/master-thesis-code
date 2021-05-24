@@ -52,6 +52,7 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
     train_losses = []
     test_losses = []
     vae_model.train()
+    print()
     for batch_id, (x_batch, _) in enumerate(data_holder.train):
         x_batch = x_batch.view(-1, data_holder.dims).to(device)
         params, x_preds = vae_model(x_batch)
@@ -61,9 +62,10 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         vae_model.backward(params, losses)
         kl = vae_model.probabilistic.distribution.kl(params)
         train_loss = losses.detach().mean() + kl.detach().mean()
-        print(f"Train: {train_loss:.1f}", end='\r', flush=True)
+        print(f"\rTrain: {train_loss:.1f}", end='', flush=True)
         train_losses.append(train_loss)
         optimizer.step()
+    print()
     test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 

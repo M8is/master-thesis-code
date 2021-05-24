@@ -1,7 +1,7 @@
 task: 'vae'
 seed: 2930489
 dataset: 'MNIST'
-batch_size: 64
+batch_size: 128
 mc_estimator: 'mvd'
 distribution: 'MultivariateNormal'
 hidden_dim: 300
