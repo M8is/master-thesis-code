@@ -28,8 +28,9 @@ class MultivariateNormal(Distribution):
 
     def sample(self, raw_params, size=1, with_grad=False):
         mean, std = self.__prepare(raw_params)
-        eps = torch.randn([size] + list(mean.shape), requires_grad=with_grad).to(self.device)
-        return mean + eps * std
+        eps = torch.randn([size] + list(mean.shape)).to(self.device)
+        samples = mean + eps * std
+        return samples if with_grad else samples.detach()
 
     def mvd_sample(self, raw_params, size):
         mean, std = self.__prepare(raw_params)

@@ -1,3 +1,5 @@
+import torch
+
 from .estimator_base import MCEstimator
 
 
@@ -15,13 +17,10 @@ class Reinforce(MCEstimator):
     def _backward(self, raw_params, losses, retain_graph):
         if self._samples is None:
             raise ValueError("No forward call or multiple backward calls.")
-        losses = losses.squeeze()
         log_probs = self.distribution.log_prob(raw_params, self._samples)
-        baseline = self._get_baseline(losses) if self.baseline else 0
-        if len(log_probs.shape) > 1:
-            log_probs = log_probs.mean(dim=-1)
-        ((losses - baseline) * log_probs).mean().backward(retain_graph=retain_graph)
         self._samples = None
+        baseline = self._get_baseline(losses) if self.baseline else 0
+        ((losses - baseline) * log_probs).mean().backward(retain_graph=retain_graph)
 
     def _get_baseline(self, losses):
         self.__loss_avg = losses.mean() if self.__loss_avg is None else .9 * self.__loss_avg + .1 * losses.mean()
