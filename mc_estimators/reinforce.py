@@ -1,5 +1,3 @@
-import torch
-
 from .estimator_base import MCEstimator
 
 
