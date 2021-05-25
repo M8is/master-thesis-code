@@ -50,6 +50,7 @@ def __train_epoch(model, data_holder, device, optimizer):
     for x_batch, y_batch in data_holder.train:
         raw_params, y_preds = model(x_batch.to(device))
         losses = __bce_loss(y_batch.to(device), y_preds)
+        # TODO: add kl backward
         optimizer.zero_grad()
         model.backward(raw_params, losses)
         optimizer.step()

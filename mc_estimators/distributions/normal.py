@@ -52,28 +52,26 @@ class MultivariateNormal(Distribution):
 
     def kl(self, raw_params):
         mean, std = self.__prepare(raw_params)
-        cov = std**2
-        kl = 0.5 * (mean ** 2 + cov - 1 - torch.log(cov))
-        return kl.sum(dim=1) if len(kl.shape) > 1 else kl
+        return 0.5 * (mean.pow(2) + std.pow(2) - 2 * torch.log(std) - 1).sum()
 
     def log_prob(self, raw_params, samples):
         mean, std = self.__prepare(raw_params)
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std**2))
         return dist.log_prob(samples)
 
-    def __prepare(self, params):
-        mean, log_std = torch.split(params, self.param_dims, dim=-1)
-        #log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
+    def __prepare(self, raw_params):
+        mean, log_std = torch.split(raw_params, self.param_dims, dim=-1)
+        log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
         std = torch.exp(log_std)
         return mean, std
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
-        pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         pos_weibull = self.__sample_weibull(sample_size, mean.size())
+        pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         pos_samples = self.__replace_diagonal(pos_std_normal, pos_weibull)
-        neg_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         # TODO: Is this correct coupling?
         neg_weibull = pos_weibull if coupled else self.__sample_weibull(sample_size, mean.size())
+        neg_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         neg_samples = -self.__replace_diagonal(neg_std_normal, neg_weibull)
         samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + samples * std

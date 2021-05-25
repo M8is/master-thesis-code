@@ -46,6 +46,7 @@ def train_polynomial(seed, results_dir, device, epochs, sample_size, learning_ra
                 x.squeeze_(dim=2).squeeze_(dim=-1)
             losses = polynomial(x)
             optimizer.zero_grad()
+            # TODO: add kl backward
             model.backward(raw_params, losses)
             if grad_mask is not None:
                 model_params.grad *= grad_mask

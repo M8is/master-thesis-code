@@ -52,19 +52,20 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
     train_losses = []
     test_losses = []
     vae_model.train()
-    print()
+    print(50 * "-")
     for batch_id, (x_batch, _) in enumerate(data_holder.train):
         x_batch = x_batch.view(-1, data_holder.dims).to(device)
-        params, x_preds = vae_model(x_batch)
-        losses = __bce_loss(x_batch, x_preds)
+        raw_params, x_recon = vae_model(x_batch)
+        kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
+        loss = __bce_loss(x_batch, x_recon).mean()
         optimizer.zero_grad()
-        vae_model.backward(params, losses)
-        kl = vae_model.probabilistic.distribution.kl(params)
-        train_loss = losses.detach().mean() + kl.detach().mean()
-        print(f"\rTrain: {train_loss:.1f}", end='', flush=True)
-        train_losses.append(train_loss)
+        loss.backward()
+        kld.backward(retain_graph=True)
+        vae_model.probabilistic.backward(raw_params, lambda samples: __bce_loss(x_batch, vae_model.decoder(samples)))
+        print(f"\r| ELBO: {loss + kld:.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} | ", end='', flush=True)
+        train_losses.append(loss + kld)
         optimizer.step()
-    print()
+    print(50 * " " + "\r", end='')
     test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
@@ -74,9 +75,10 @@ def __test_epoch(vae_model, data_holder, device):
         test_losses = []
         for x_batch, _ in data_holder.test:
             x_batch = x_batch.view(-1, data_holder.dims).to(device)
-            params, x_preds = vae_model(x_batch)
-            losses = __bce_loss(x_batch, x_preds) + vae_model.probabilistic.distribution.kl(params)
-            test_losses.append(losses.detach().mean())
+            raw_params, x_preds = vae_model(x_batch)
+            loss = __bce_loss(x_batch, x_preds).mean()
+            kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
+            test_losses.append(loss + kld)
         return torch.tensor(test_losses).mean()
 
 
@@ -98,7 +100,37 @@ def __generate_images(model, output_dir, data_holder, device):
             save_image(comparison, path.join(output_dir, f'recon_{batch_id}.png'), nrow=n)
 
 
-def __bce_loss(x, x_pred):
+def __bce_loss(x, x_recon):
     # Use no reduction to get separate losses for each image
     binary_cross_entropy = torch.nn.BCELoss(reduction='none')
-    return binary_cross_entropy(x_pred, x.expand_as(x_pred)).sum(dim=-1)
+    return binary_cross_entropy(x_recon, x.expand_as(x_recon)).sum(dim=-1)
+
+
+# TODO: add option to run this before/after each iteration/epoch
+def __get_estimator_stds(model, optimizer, data_holder, device):
+    n_estimates = 100
+
+    result = []
+    batch_size = data_holder.train.batch_size
+    for x_batch, _ in data_holder.test:
+        if x_batch.size(0) != batch_size:
+            continue
+        x_batch = x_batch.view(-1, data_holder.dims).to(device)
+        grads = []
+        for _ in range(n_estimates):
+            model.train()
+            params, (decoder_x_preds, encoder_x_preds) = model(x_batch)
+            for p in params:
+                p.retain_grad()
+            decoder_losses = __bce_loss(x_batch, decoder_x_preds)
+            encoder_losses = __bce_loss(x_batch, encoder_x_preds)
+            optimizer.zero_grad()
+            model.backward(params, decoder_losses, encoder_losses)
+            for i, p in enumerate(params):
+                grad = p.grad.mean().unsqueeze(0)
+                try:
+                    grads[i] = torch.cat((grads[i], grad), dim=0)
+                except IndexError:
+                    grads.append(grad)
+        result.append(torch.stack(grads).std(dim=1))
+    return torch.stack(result).mean(dim=0)
