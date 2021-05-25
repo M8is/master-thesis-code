@@ -42,15 +42,17 @@ class MultivariateNormal(Distribution):
         with torch.no_grad():
             losses = losses.mean(dim=2).transpose(-2, -1)  # Mean over samples
             mean_losses, std_losses = losses
-            mean_grad = (mean_losses[0] - mean_losses[1]) / (np.sqrt(2 * np.pi) * std)
-            std_grad = (std_losses[0] - std_losses[1]) / std
+            mean_pos_losses, mean_neg_losses = mean_losses
+            mean_grad = (mean_pos_losses - mean_neg_losses) / (np.sqrt(2 * np.pi) * std)
+            std_pos_losses, std_neg_losses = std_losses
+            std_grad = (std_pos_losses - std_neg_losses) / std
         mean.backward(gradient=mean_grad, retain_graph=True)
         std.backward(gradient=std_grad, retain_graph=retain_graph)
 
     def kl(self, raw_params):
-        mean, log_std = self.__prepare(raw_params, keep_log_std=True)
-        log_cov = 2 * log_std
-        kl = 0.5 * (mean ** 2 + torch.exp(log_cov) - 1 - log_cov)
+        mean, std = self.__prepare(raw_params)
+        cov = std**2
+        kl = 0.5 * (mean ** 2 + cov - 1 - torch.log(cov))
         return kl.sum(dim=1) if len(kl.shape) > 1 else kl
 
     def log_prob(self, raw_params, samples):
@@ -58,10 +60,11 @@ class MultivariateNormal(Distribution):
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std**2))
         return dist.log_prob(samples)
 
-    def __prepare(self, params, keep_log_std=False):
+    def __prepare(self, params):
         mean, log_std = torch.split(params, self.param_dims, dim=-1)
-        log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
-        return (mean, log_std) if keep_log_std else (mean, torch.exp(log_std))
+        #log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
+        std = torch.exp(log_std)
+        return mean, std
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
         pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
@@ -70,8 +73,8 @@ class MultivariateNormal(Distribution):
         neg_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
         # TODO: Is this correct coupling?
         neg_weibull = pos_weibull if coupled else self.__sample_weibull(sample_size, mean.size())
-        neg_samples = self.__replace_diagonal(neg_std_normal, neg_weibull)
-        samples = torch.stack((pos_samples, -neg_samples)).transpose(-3, -2)
+        neg_samples = -self.__replace_diagonal(neg_std_normal, neg_weibull)
+        samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + samples * std
 
     def __std_samples(self, mean, std, sample_size, coupled=True):
@@ -87,8 +90,8 @@ class MultivariateNormal(Distribution):
 
     @staticmethod
     def __replace_diagonal(target, new_diagonal):
-        mask = torch.diag_embed(torch.ones_like(new_diagonal))
-        return new_diagonal.diag_embed() + (1. - mask) * target
+        mask = 1. - torch.ones_like(new_diagonal).diag_embed()
+        return mask * target + new_diagonal.diag_embed()
 
     def __sample_weibull(self, sample_size, shape):
         return torch.distributions.Weibull(np.sqrt(2.), concentration=2.).sample((sample_size, *shape)).to(self.device)
