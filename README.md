@@ -1,5 +1,5 @@
 ```
-conda create -n mattis python
+conda create -n mattis python=3.7
 conda activate mattis
 conda install pip
 pip install matplotlib numpy sklearn pyyaml scipy
