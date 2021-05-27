@@ -47,8 +47,8 @@ class MultivariateNormal(Distribution):
             mean_grad = (mean_pos_losses - mean_neg_losses) / (np.sqrt(2 * np.pi) * std)
             std_pos_losses, std_neg_losses = std_losses
             std_grad = (std_pos_losses - std_neg_losses) / std
-        mean.backward(gradient=mean_grad, retain_graph=True)
-        std.backward(gradient=std_grad, retain_graph=retain_graph)
+        mean.backward(gradient=mean_grad / mean_grad.size(0), retain_graph=True)
+        std.backward(gradient=std_grad / std_grad.size(0), retain_graph=retain_graph)
 
     def kl(self, raw_params):
         mean, std = self.__prepare(raw_params)
@@ -66,24 +66,25 @@ class MultivariateNormal(Distribution):
         return mean, std
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
+        std_normal = torch.randn((sample_size, *mean.size())).to(self.device)
+        std_normal = std_normal.unsqueeze(-2).repeat_interleave(mean.size(-1), dim=-2)
         pos_weibull = self.__sample_weibull(sample_size, mean.size())
-        pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
-        pos_samples = self.__replace_diagonal(pos_std_normal, pos_weibull)
-        # TODO: Is this correct coupling?
+        pos_samples = self.__replace_diagonal(std_normal, pos_weibull)
         neg_weibull = pos_weibull if coupled else self.__sample_weibull(sample_size, mean.size())
-        neg_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
-        neg_samples = -self.__replace_diagonal(neg_std_normal, neg_weibull)
+        neg_samples = -self.__replace_diagonal(std_normal, neg_weibull)
         samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + samples * std
 
     def __std_samples(self, mean, std, sample_size, coupled=True):
-        pos_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
-        pos_maxwell = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
-        pos_samples = self.__replace_diagonal(pos_std_normal, pos_maxwell)
-        neg_std_normal = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
-        neg_maxwell = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_maxwell) if coupled \
-            else torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
-        neg_samples = self.__replace_diagonal(neg_std_normal, neg_maxwell)
+        std_normal = torch.randn((sample_size, *mean.size())).to(self.device)
+        std_normal = std_normal.unsqueeze(-2).repeat_interleave(mean.size(-1), dim=-2)
+        pos_standard_dsmaxwell = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
+        pos_samples = self.__replace_diagonal(std_normal, pos_standard_dsmaxwell)
+        if coupled:
+            neg_std_dsmaxwell = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_standard_dsmaxwell)
+        else:
+            neg_std_dsmaxwell = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
+        neg_samples = self.__replace_diagonal(std_normal, neg_std_dsmaxwell)
         samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + std * samples
 
@@ -93,7 +94,8 @@ class MultivariateNormal(Distribution):
         return mask * target + new_diagonal.diag_embed()
 
     def __sample_weibull(self, sample_size, shape):
-        return torch.distributions.Weibull(np.sqrt(2.), concentration=2.).sample((sample_size, *shape)).to(self.device)
+        weibull = torch.distributions.Weibull(scale=np.sqrt(2.), concentration=2.)
+        return weibull.sample((sample_size, *shape)).to(self.device)
 
     def __sample_standard_doublesided_maxwell(self, sample_size, shape):
         gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((sample_size, *shape)).to(self.device)

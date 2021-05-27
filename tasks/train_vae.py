@@ -52,20 +52,20 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
     train_losses = []
     test_losses = []
     vae_model.train()
-    print(50 * "-")
+    print(60 * "-")
     for batch_id, (x_batch, _) in enumerate(data_holder.train):
         x_batch = x_batch.view(-1, data_holder.dims).to(device)
         raw_params, x_recon = vae_model(x_batch)
-        kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
         loss = __bce_loss(x_batch, x_recon).mean()
+        kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
         optimizer.zero_grad()
         kld.backward(retain_graph=True)
         vae_model.probabilistic.backward(raw_params, lambda samples: __bce_loss(x_batch, vae_model.decoder(samples)))
         loss.backward()
         optimizer.step()
-        print(f"\r| ELBO: {loss + kld:.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} | ", end='', flush=True)
+        if batch_id % 10 == 0:
+            print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} | ")
         train_losses.append(loss + kld)
-    print(50 * " " + "\r", end='')
     test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
