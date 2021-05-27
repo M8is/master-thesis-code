@@ -23,8 +23,8 @@ distributions = {
 }
 
 
-def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, device: str, param_dims: List[int],
-                  *args, **kwargs):
+def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, device: str, latent_dim: int, *args,
+                  **kwargs):
     """ Create a new estimator
 
     :param estimator_tag: How the gradient will be estimated. Check `estimators.keys()` for valid values.
@@ -32,7 +32,7 @@ def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, d
                              Note: Some estimator/distribution combinations do NOT WORK, even if there are no errors.
     :param sample_size: Number of MC samples used by the returned estimator
     :param device: Device on which to put created tensors
-    :param param_dims: Dimensions of the probabilistic layer.
+    :param latent_dim: Output size of the probabilistic layer.
     :param args: Additional args for the algorithm
     :param kwargs: Additional kwargs for the algorithm
     :return: Estimator instance
@@ -44,13 +44,14 @@ def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, d
 
     if distribution_tag == 'gaussianmixture':
         selector_tag = kwargs['selector_estimator'].lower()
-        selector = estimators[selector_tag](distributions['categorical'](param_dims[:1], device), 1, **kwargs)
-        component = estimators[estimator_tag](distributions['multivariatenormal'](param_dims[1:], device), sample_size,
+        n_components = kwargs['n_components']
+        selector = estimators[selector_tag](distributions['categorical'](n_components, device), 1, **kwargs)
+        component = estimators[estimator_tag](distributions['multivariatenormal'](latent_dim, device), sample_size,
                                               device, **kwargs)
         return DiscreteMixture(selector, component, *args, **kwargs)
     else:
         estimator = estimators[estimator_tag]
         if distribution_tag not in distributions:
             raise ValueError(f'Distribution {distribution_tag} not available for estimator {estimator_tag}.')
-        distribution = distributions[distribution_tag](param_dims, device)
+        distribution = distributions[distribution_tag](latent_dim, device)
         return estimator(distribution, sample_size, *args, **kwargs)

@@ -1,14 +1,11 @@
 task: 'polynomial'
-seed: 2930489
+seeds:
+  - 2930489
 mc_estimator: 'MVD'
 selector_estimator: 'MVD'
 distribution: 'GaussianMixture'
-param_dims:
-  # Number of components
-  - 3
-  # Dimensions of mean/std
-  - 1
-  - 1
+n_components: 3
+latent_dim: 1
 init_params:
   # Categorical params (normalized via softmax)
   - 1
@@ -28,4 +25,4 @@ with_kl: False
 epochs: 1000
 sample_size: 1
 learning_rate: 0.01
-device: 'cuda:0'
+device: 'cuda'

@@ -9,41 +9,35 @@ from utils.data_holder import DataHolder
 from utils.estimator_factory import get_estimator
 from utils.loss_holder import LossHolder
 from utils.eval_util import eval_mode
-from utils.seeds import fix_random_seed
 
 
-def train_vae(seed, results_dir, dataset, device, hidden_dim, param_dims, latent_dim, epochs, sample_size,
-              learning_rate, mc_estimator, distribution, batch_size, **kwargs):
+def train_vae(results_dir, dataset, device, hidden_dim, latent_dim, epochs, learning_rate,
+              mc_estimator, distribution, batch_size, **kwargs):
+    data_holder = DataHolder.get(dataset, batch_size)
+
+    # Create model
+    estimator = get_estimator(estimator_tag=mc_estimator, distribution_tag=distribution, device=device,
+                              latent_dim=latent_dim, **kwargs)
+    encoder = models.vae.Encoder(data_holder.dims, hidden_dim, estimator.distribution.param_dims)
+    decoder = models.vae.Decoder(data_holder.dims, hidden_dim, latent_dim)
+    vae_network = models.vae.VAE(encoder, decoder, estimator).to(device)
+    optimizer = torch.optim.Adam(vae_network.parameters(), lr=learning_rate)
+
+    print(f'Training with {estimator}.')
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
-
-    if path.exists(results_dir):
-        print(f"Skipping training: '{results_dir}' already exists")
-    else:
-        makedirs(results_dir)
-        fix_random_seed(seed)
-        data_holder = DataHolder.get(dataset, batch_size)
-
-        # Create model
-        estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
-        encoder = models.vae.Encoder(data_holder.dims, hidden_dim, param_dims)
-        decoder = models.vae.Decoder(data_holder.dims, hidden_dim, latent_dim)
-        vae_network = models.vae.VAE(encoder, decoder, estimator).to(device)
-        optimizer = torch.optim.Adam(vae_network.parameters(), lr=learning_rate)
-
-        print(f'Training with {estimator}.')
-        for epoch in range(1, epochs + 1):
-            train_loss, test_loss = __train_epoch(vae_network, data_holder, device, optimizer)
-            train_losses.add(train_loss)
-            test_losses.add(test_loss)
-            file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
-            train_losses.save()
-            test_losses.save()
-            torch.save(vae_network, file_name)
-            __generate_images(vae_network, path.join(results_dir, f'images_{epoch}'), data_holder, device)
-            print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
-                  f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
-                  flush=True)
+    for epoch in range(1, epochs + 1):
+        train_loss, test_loss = __train_epoch(vae_network, data_holder, device, optimizer)
+        train_losses.add(train_loss)
+        test_losses.add(test_loss)
+        file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
+        train_losses.save()
+        test_losses.save()
+        torch.save(vae_network, file_name)
+        __generate_images(vae_network, path.join(results_dir, f'images_{epoch}'), data_holder, device)
+        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
+              f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
+              flush=True)
 
     return train_losses, test_losses
 
@@ -63,10 +57,10 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         vae_model.probabilistic.backward(raw_params, lambda samples: __bce_loss(x_batch, vae_model.decoder(samples)))
         loss.backward()
         optimizer.step()
-        if batch_id % 10 == 0:
+        if batch_id % 100 == 0:
             print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} | ")
+        test_losses.append(__test_epoch(vae_model, data_holder, device))
         train_losses.append(loss + kld)
-    test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
 
@@ -107,30 +101,25 @@ def __bce_loss(x, x_recon):
 
 
 # TODO: add option to run this before/after each iteration/epoch
-def __get_estimator_stds(model, optimizer, data_holder, device):
-    n_estimates = 100
-
-    result = []
-    batch_size = data_holder.train.batch_size
-    for x_batch, _ in data_holder.test:
-        if x_batch.size(0) != batch_size:
-            continue
-        x_batch = x_batch.view(-1, data_holder.dims).to(device)
-        grads = []
-        for _ in range(n_estimates):
-            model.train()
-            params, (decoder_x_preds, encoder_x_preds) = model(x_batch)
-            for p in params:
-                p.retain_grad()
-            decoder_losses = __bce_loss(x_batch, decoder_x_preds)
-            encoder_losses = __bce_loss(x_batch, encoder_x_preds)
-            optimizer.zero_grad()
-            model.backward(params, decoder_losses, encoder_losses)
-            for i, p in enumerate(params):
-                grad = p.grad.mean().unsqueeze(0)
-                try:
-                    grads[i] = torch.cat((grads[i], grad), dim=0)
-                except IndexError:
-                    grads.append(grad)
-        result.append(torch.stack(grads).std(dim=1))
-    return torch.stack(result).mean(dim=0)
+# FIXME
+# def __get_estimator_stds(x_batch, model, device):
+#     n_estimates = 100
+#     batch_size = data_holder.train.batch_size
+#     x_batch = x_batch.view(-1, data_holder.dims).to(device)
+#     grads = []
+#     for _ in range(n_estimates):
+#         model.train()
+#         params, (decoder_x_preds, encoder_x_preds) = model(x_batch)
+#         for p in params:
+#             p.retain_grad()
+#         decoder_losses = __bce_loss(x_batch, decoder_x_preds)
+#         encoder_losses = __bce_loss(x_batch, encoder_x_preds)
+#         optimizer.zero_grad()
+#         model.backward(params, decoder_losses, encoder_losses)
+#         for i, p in enumerate(params):
+#             grad = p.grad.mean().unsqueeze(0)
+#             try:
+#                 grads[i] = torch.cat((grads[i], grad), dim=0)
+#             except IndexError:
+#                 grads.append(grad)
+#     return torch.stack(grads).std(dim=1)

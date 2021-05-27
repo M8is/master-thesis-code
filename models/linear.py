@@ -4,7 +4,7 @@ import torch
 class LinearProbabilistic(torch.nn.Module):
     def __init__(self, input_dim, probabilistic, with_kl=False):
         super().__init__()
-        self.linear = torch.nn.Linear(input_dim, sum(probabilistic.param_dims))
+        self.linear = torch.nn.Linear(input_dim, sum(probabilistic.distribution.param_dims))
         self.probabilistic = probabilistic
         self.with_kl = with_kl
 

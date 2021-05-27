@@ -1,10 +1,9 @@
 task: 'polynomial'
-seed: 2930489
+seeds:
+  - 2930489
 mc_estimator: 'mvd'
 distribution: 'normal'
-param_dims:
-  - 1
-  - 1
+latent_dim: 1
 init_params:
   - 0.1
   - -1

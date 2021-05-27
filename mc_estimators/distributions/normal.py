@@ -12,6 +12,9 @@ class MultivariateNormal(Distribution):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def _get_param_dims(self, output_dim):
+        return [output_dim, output_dim]
+
     def pdf(self, raw_params):
         mean, std = self.__prepare(raw_params.cpu())
         dims = mean.size(-1)

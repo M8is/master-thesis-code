@@ -1,15 +1,14 @@
 task: 'logreg'
-seed: 2930489
+seeds:
+  - 2930489
 dataset: 'cancer'
 batch_size: 32
 mc_estimator: 'reinforce'
 distribution: 'MultivariateNormal'
-param_dims:
-  - 30
-  - 30
+latent_dim: 30
 epochs: 100
 sample_size: 50
 learning_rate: 0.001
 baseline: False
 plot_label: 'reinforce no baseline'
-device: 'cuda:0'
+device: 'cuda'

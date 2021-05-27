@@ -16,11 +16,10 @@ class VAE(torch.nn.Module):
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dims):
+    def __init__(self, input_size, hidden_dim, params_sizes):
         super().__init__()
-        self.input_dim = input_dim
-        self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, sum(latent_dims))
+        self.fc1 = torch.nn.Linear(input_size, hidden_dim)
+        self.fc2 = torch.nn.Linear(hidden_dim, sum(params_sizes))
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x))

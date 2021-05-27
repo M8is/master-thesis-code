@@ -1,13 +1,12 @@
 task: 'logreg'
-seed: 2930489
+seeds:
+  - 2930489
 dataset: 'cancer'
 batch_size: 32
 mc_estimator: 'mvd'
 distribution: 'MultivariateNormal'
-param_dims:
-  - 30
-  - 30
+latent_dim: 30
 epochs: 100
 sample_size: 1
 learning_rate: 0.001
-device: 'cuda:0'
+device: 'cuda'
