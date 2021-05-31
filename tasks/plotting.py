@@ -3,13 +3,12 @@ from matplotlib import pyplot as plt
 from os import path, makedirs
 
 
-def plot_losses(results_dir, losses_per_task):
+def plot_losses(plot_dir, losses_per_task):
     for task, configs_and_losses in losses_per_task.items():
-        plot_dir = path.join(results_dir, 'plots', task)
         if not path.exists(plot_dir):
             makedirs(plot_dir)
 
-        print(f"Plotting losses for task '{task}' in {results_dir} ...")
+        print(f"Plotting losses for task '{task}' in '{plot_dir}' ...")
         for config, losses in configs_and_losses.values():
             train_losses, _ = zip(*losses)
             __plot(np.stack(train_losses), **config)
