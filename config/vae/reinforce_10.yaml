@@ -20,5 +20,4 @@ epochs: 10
 sample_size: 10
 learning_rate: 0.001
 plot_label: 'Reinforce 10 samples'
-logscale: True
 device: 'cuda'

@@ -20,5 +20,4 @@ epochs: 10
 sample_size: 1
 learning_rate: 0.001
 plot_label: 'Pathwise 1 sample'
-logscale: True
 device: 'cuda'

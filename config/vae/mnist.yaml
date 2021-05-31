@@ -12,7 +12,6 @@ hidden_dim: 400
 latent_dim: 20
 epochs: 10
 learning_rate: 0.001
-logscale: True
 device: 'cuda'
 runs:
   - mc_estimator: 'reinforce'
