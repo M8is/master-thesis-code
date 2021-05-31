@@ -59,8 +59,8 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         optimizer.step()
         if batch_id % 100 == 0:
             print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} | ")
-        test_losses.append(__test_epoch(vae_model, data_holder, device))
         train_losses.append(loss + kld)
+    test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
 
