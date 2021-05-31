@@ -15,6 +15,9 @@ from utils.seeds import fix_random_seed
 
 
 def main(args):
+    if args.plot and args.clean:
+        raise ValueError("Clean and plot is not allowed to avoid accidentally deleting results.")
+
     config_file_paths = args.c
     losses_per_task = {}
     for config_path in config_file_paths:
@@ -23,10 +26,11 @@ def main(args):
                 config = yaml.safe_load(f)
             config_id = config_path
             seeds = config['seeds']
+            results_base_dir = path.splitext(config_path)[0].replace('config', 'results')
+
             for seed in seeds:
-                if 'results_dir' not in config:
-                    config['results_dir'] = path.splitext(config_path)[0].replace('config', 'results')
-                config['results_dir'] = path.join(config['results_dir'], str(seed))
+                results_dir = path.join(results_base_dir, str(seed))
+                config['results_dir'] = results_dir
 
                 dev = 'cpu'
                 if 'device' in config and torch.cuda.is_available():
@@ -37,7 +41,6 @@ def main(args):
                     clean(**config)
 
                 task = config.get('task', None)
-                results_dir = config['results_dir']
                 if path.exists(results_dir):
                     print(f"Skipping training; Loading existing results from '{results_dir}'...")
                     train_loss = LossHolder(results_dir, train=True)
@@ -66,7 +69,8 @@ def main(args):
             traceback.print_exc()
             continue
 
-    plot_losses('results', losses_per_task)
+    if args.plot:
+        plot_losses('results', losses_per_task)
 
 
 if __name__ == '__main__':
@@ -74,4 +78,5 @@ if __name__ == '__main__':
     parser.add_argument('-c', default=[], help='path to config file(s)', nargs='*')
     parser.add_argument('--clean', action='store_true',
                         help='WARNING: deletes all result directories and starts a clean run')
+    parser.add_argument('--plot', action='store_true', help='Run plotting')
     main(parser.parse_args())

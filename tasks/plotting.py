@@ -21,14 +21,13 @@ def plot_losses(results_dir, losses_per_task):
             _, test_losses = zip(*losses)
             __plot(np.stack(test_losses), **config)
         plt.legend()
-        plt.savefig(path.join(plot_dir, 'train.png'))
+        plt.savefig(path.join(plot_dir, 'test.png'))
         plt.clf()
 
 
-def __plot(losses, logscale=False, **kwargs):
-    if logscale:
-        plt.yscale('log')
+def __plot(losses, **kwargs):
+    plt.ylim(100, 220)
     mean = losses.mean(axis=0)
     std = losses.std(axis=0)
-    plt.plot(mean, label=kwargs.get('plot_label', kwargs['mc_estimator']))
-    plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=.25)
+    plt.plot(mean, label=kwargs.get('plot_label', kwargs['mc_estimator']), linewidth=.5)
+    plt.fill_between(range(len(mean)), mean - 2 * std, mean + 2 * std, alpha=.3)
