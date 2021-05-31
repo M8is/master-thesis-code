@@ -10,8 +10,9 @@ from torchvision import datasets, transforms
 class DataHolder(ABC):
     _datasets = dict()
 
-    def __init__(self, batch_size):
-        self.__train_holder, self.__test_holder = self.load(batch_size)
+    def __init__(self, batch_size, *args, **kwargs):
+        self.__train_holder, self.__test_holder = self.load(batch_size, *args, **kwargs)
+        self.batch_size = batch_size
 
     @property
     def train(self):
@@ -40,7 +41,7 @@ class DataHolder(ABC):
         return __reg
 
     @abstractmethod
-    def load(self, batch_size):
+    def load(self, batch_size, *args, **kwargs):
         pass
 
 
@@ -50,13 +51,19 @@ class MNIST(DataHolder):
     def dims(self):
         return 784
 
-    def load(self, batch_size):
+    def load(self, batch_size, *args, **kwargs):
+        loader_args = dict()
+        if 'device' in kwargs:
+            loader_args['pin_memory'] = 'cuda' in kwargs['device']
+        if 'num_workers' in kwargs:
+            loader_args['num_workers'] = kwargs['num_workers']
+
         train_holder = DataLoader(
             datasets.MNIST(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True,
-            batch_size=batch_size)
+            batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
             datasets.MNIST(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True,
-            batch_size=batch_size)
+            batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
 
@@ -66,7 +73,7 @@ class BreastCancer(DataHolder):
     def dims(self):
         return 30
 
-    def load(self, batch_size):
+    def load(self, batch_size, *_, **__):
         x, y = sklearn.datasets.load_breast_cancer(return_X_y=True)
         x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in
                                             sklearn.model_selection.train_test_split(x, y, shuffle=True))

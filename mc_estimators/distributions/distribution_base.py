@@ -2,21 +2,17 @@ from abc import ABC, abstractmethod
 
 
 class Distribution(ABC):
-    def __init__(self, param_dims, device):
-        self.param_dims = param_dims
+    def __init__(self, output_size, device):
+        self.param_dims = self._get_param_dims(output_size)
         self.device = device
 
-    def mvd_grad(self, params, losses):
-        pos_losses, neg_losses = losses
-        delta = (pos_losses - neg_losses).mean(dim=1).sum(dim=-1).transpose(-3, -2)
-        c = self._mvd_constant(params)
-        grad = c * delta
-        if len(params) <= 1:
-            grad.unsqueeze_(0)
-        return grad
+    @abstractmethod
+    def _get_param_dims(self, output_dim):
+        pass
 
-    def pdf(self, params):
-        raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")
+    @abstractmethod
+    def mvd_backward(self, raw_params, losses, retain_graph):
+        pass
 
     @abstractmethod
     def sample(self, raw_params, size=1, with_grad=False):
@@ -27,13 +23,12 @@ class Distribution(ABC):
         pass
 
     @abstractmethod
-    def kl(self, params):
+    def kl(self, raw_params):
         pass
 
     @abstractmethod
-    def log_prob(self, params, samples):
+    def log_prob(self, raw_params, samples):
         pass
 
-    @abstractmethod
-    def _mvd_constant(self, params):
-        pass
+    def pdf(self, raw_params):
+        raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")

@@ -1,10 +1,13 @@
 task: 'polynomial'
-seed: 2930489
+seeds:
+  - 2930489
 mc_estimator: 'mvd'
-distribution: 'categorical'
-param_dims:
-  - 4
-epochs: 1000
-sample_size: 1
-learning_rate: 0.1
-device: 'cuda:0'
+distribution: 'normal'
+latent_dim: 1
+init_params:
+  - 0.1
+  - -1
+epochs: 100
+sample_size: 7
+learning_rate: 0.01
+device: 'cuda'

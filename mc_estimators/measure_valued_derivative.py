@@ -1,15 +1,11 @@
-import torch
-
 from .estimator_base import MCEstimator
 
 
 class MVD(MCEstimator):
     def _sample(self, raw_params):
-        params, samples = self.distribution.mvd_sample(raw_params, self.sample_size)
-        return params.mean(dim=1), samples.detach()
+        return self.distribution.sample(raw_params, with_grad=False)
 
-    def _backward(self, params, losses, retain_graph):
-        with torch.no_grad():
-            grad = self.distribution.mvd_grad(params, losses)
-        assert grad.shape == params.shape, f"Grad shape {grad.shape} != params shape {params.shape}"
-        params.backward(gradient=grad, retain_graph=retain_graph)
+    def backward(self, raw_params, loss_fn, retain_graph=False):
+        mvd_samples = self.distribution.mvd_sample(raw_params, self.sample_size)
+        losses = loss_fn(mvd_samples).detach()
+        self.distribution.mvd_backward(raw_params, losses, retain_graph)

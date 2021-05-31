@@ -1,0 +1,28 @@
+task: 'polynomial'
+seeds:
+  - 2930489
+mc_estimator: 'MVD'
+selector_estimator: 'MVD'
+distribution: 'GaussianMixture'
+n_components: 3
+latent_dim: 1
+init_params:
+  # Categorical params (normalized via softmax)
+  - 1
+  - 1
+  - 1
+  # First component (mean, log(std))
+  - -2
+  - -1
+  # Second component (mean, log(std))
+  - 0
+  - -1
+  # Third component (mean, log(std))
+  - 2
+  - -1
+train_std: False
+with_kl: False
+epochs: 1000
+sample_size: 1
+learning_rate: 0.01
+device: 'cuda'

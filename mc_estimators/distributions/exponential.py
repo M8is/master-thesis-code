@@ -3,8 +3,8 @@ from .distribution_base import Distribution
 
 
 class Exponential(Distribution):
-    def sample(self, params, size=1, with_grad=False):
-        dist = torch.distributions.exponential.Exponential(self._as_rate(params))
+    def sample(self, raw_params, size=1, with_grad=False):
+        dist = torch.distributions.exponential.Exponential(self._as_rate(raw_params))
         samples = dist.rsample((size,)) if with_grad else dist.sample((size,))
         return samples.to(self.device)
 
@@ -13,20 +13,27 @@ class Exponential(Distribution):
         pos_samples = self.__sample_exponential(size, rate)
         neg_samples = self.__sample_negative(size, rate)
         samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
-        return rate, samples + rate
+        return samples + rate
 
-    def _mvd_constant(self, params):
-        return 1. / self._as_rate(params)
+    def mvd_backward(self, raw_params, losses, retain_graph):
+        rate = self._as_rate(raw_params)
+        with torch.no_grad():
+            pos_losses, neg_losses = losses.mean(dim=0)
+            grad = (1. / rate) * (pos_losses - neg_losses)
+        assert grad.shape == rate.shape, f"Grad shape {grad.shape} != params shape {rate.shape}"
+        rate.backward(gradient=grad, retain_graph=retain_graph)
 
-    def kl(self, params):
+    def kl(self, raw_params):
+        params = self._as_rate(raw_params)
         return (params - torch.log(params) - 1).sum(dim=1)
 
-    def log_prob(self, params, samples):
+    def log_prob(self, raw_params, samples):
+        params = self._as_rate(raw_params)
         return torch.distributions.Exponential(params).log_prob(samples).sum(dim=-1)
 
     @staticmethod
-    def _as_rate(params):
-        return torch.exp(params)
+    def _as_rate(raw_params):
+        return torch.exp(raw_params)
 
     def __sample_exponential(self, sample_size, rate):
         return torch.distributions.exponential.Exponential(rate).sample((sample_size,)).to(self.device)

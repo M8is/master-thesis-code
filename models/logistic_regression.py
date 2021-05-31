@@ -9,13 +9,14 @@ class LinearLogisticRegression(torch.nn.Module):
 
     def forward(self, x):
         raw_params = self.params.unsqueeze(0).repeat_interleave(x.size(0), dim=0)
-        params, samples = self.probabilistic(raw_params) if self.training else self.probabilistic.distribution.sample(
-            raw_params)
-        return params, self.__logistic((x * samples).sum(dim=-1))
+        samples = self.probabilistic(raw_params) if self.training else self.probabilistic.distribution.sample(raw_params)
+        return raw_params, self.__logistic((x * samples).sum(dim=-1))
 
-    def backward(self, params, losses):
-        self.probabilistic.distribution.kl(params).mean().backward(retain_graph=True)
-        self.probabilistic.backward(params, losses.detach())
+    def backward(self, raw_params, losses):
+        # Mean over batch
+        losses = losses.mean(dim=-1)
+        self.probabilistic.distribution.kl(raw_params).mean().backward(retain_graph=True)
+        self.probabilistic.backward(raw_params, losses.detach())
 
     @staticmethod
     def __logistic(z):

@@ -3,10 +3,12 @@ seeds:
   - 2930489
 dataset: 'cancer'
 batch_size: 32
-mc_estimator: 'pathwise'
+mc_estimator: 'reinforce'
 distribution: 'MultivariateNormal'
 latent_dim: 30
 epochs: 100
-sample_size: 1
+sample_size: 50
 learning_rate: 0.001
+baseline: False
+plot_label: 'reinforce no baseline'
 device: 'cuda'
