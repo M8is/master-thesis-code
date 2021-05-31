@@ -26,6 +26,9 @@ def main(args):
 
     config_results_path = path.join(results_base_dir, path.basename(config_path))
     if not path.exists(config_results_path):
+        config_results_dirname = path.dirname(config_results_path)
+        if not path.exists(config_results_dirname):
+            makedirs(config_results_dirname)
         copyfile(config_path, config_results_path)
 
     losses_per_task = {}
