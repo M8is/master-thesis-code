@@ -29,7 +29,6 @@ def plot_losses(plot_dir, losses_per_task):
 
 
 def __plot(losses, **kwargs):
-    plt.ylim(100, 220)
     mean = losses.mean(axis=0)
     std = losses.std(axis=0)
     plt.plot(mean, label=kwargs.get('plot_label', kwargs['mc_estimator']), linewidth=.5)
