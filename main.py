@@ -24,12 +24,11 @@ def main(args):
 
     results_base_dir = path.splitext(config_path)[0].replace('config', 'results', 1)
 
+    # Copy config file to results dir
     config_results_path = path.join(results_base_dir, path.basename(config_path))
-    if not path.exists(config_results_path):
-        config_results_dirname = path.dirname(config_results_path)
-        if not path.exists(config_results_dirname):
-            makedirs(config_results_dirname)
-        copyfile(config_path, config_results_path)
+    if not path.exists(results_base_dir):
+        makedirs(results_base_dir)
+    copyfile(config_path, config_results_path)
 
     losses_per_task = {}
     if 'runs' in meta_config:
