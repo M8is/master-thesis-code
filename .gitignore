@@ -342,11 +342,7 @@ tags
 data/
 
 # Ignore output files
-*.pt
-*.pkl
-*.svg
-*.png
-*.jpg
+results/
 
 # Ignore vscode files
 .vscode/
