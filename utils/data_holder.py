@@ -8,6 +8,8 @@ from torchvision import datasets, transforms
 
 
 class DataHolder(ABC):
+    DATA_ROOT = 'data'
+
     _datasets = dict()
 
     def __init__(self, batch_size, *args, **kwargs):
@@ -59,11 +61,33 @@ class MNIST(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.MNIST(root='./data', train=True, download=True, transform=transforms.ToTensor()), shuffle=True,
-            batch_size=batch_size, **loader_args)
+            datasets.MNIST(root=self.DATA_ROOT, train=True, download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.MNIST(root='./data', train=False, download=True, transform=transforms.ToTensor()), shuffle=True,
-            batch_size=batch_size, **loader_args)
+            datasets.MNIST(root=self.DATA_ROOT, train=False, download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
+        return lambda: train_holder, lambda: test_holder
+
+
+@DataHolder.register_dataset('omniglot')
+class Omniglot(DataHolder):
+    @property
+    def dims(self):
+        return 105*105
+
+    def load(self, batch_size, *args, **kwargs):
+        loader_args = dict()
+        if 'device' in kwargs:
+            loader_args['pin_memory'] = 'cuda' in kwargs['device']
+        if 'num_workers' in kwargs:
+            loader_args['num_workers'] = kwargs['num_workers']
+
+        train_holder = DataLoader(
+            datasets.Omniglot(root=self.DATA_ROOT, background=True, download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
+        test_holder = DataLoader(
+            datasets.Omniglot(root=self.DATA_ROOT, background=False, download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
 
