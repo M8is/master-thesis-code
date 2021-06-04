@@ -1,0 +1,30 @@
+task: 'vae'
+vae_type: 'conv2d'
+seeds:
+  - 85690467
+dataset: 'CelebA'
+batch_size: 64
+distribution: 'MultivariateNormal'
+hidden_dims:
+  - 32
+  - 64
+  - 128
+  - 256
+  - 512
+latent_dim: 128
+epochs: 10
+learning_rate: 0.0005
+device: 'cuda'
+runs:
+  - mc_estimator: 'pathwise'
+    plot_label: 'Pathwise 1 sample'
+    sample_size: 1
+  - mc_estimator: 'mvd'
+    plot_label: 'MVD 1 sample'
+    sample_size: 1
+  - mc_estimator: 'reinforce'
+    plot_label: 'Reinforce 40 samples'
+    sample_size: 40
+  - mc_estimator: 'pathwise'
+    plot_label: 'Pathwise 40 sample'
+    sample_size: 40
