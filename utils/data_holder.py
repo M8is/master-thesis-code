@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 import sklearn.datasets
 import sklearn.model_selection
@@ -26,7 +27,7 @@ class DataHolder(ABC):
 
     @property
     @abstractmethod
-    def dims(self):
+    def dims(self) -> List[int]:
         pass
 
     @staticmethod
@@ -51,7 +52,7 @@ class DataHolder(ABC):
 class MNIST(DataHolder):
     @property
     def dims(self):
-        return 784
+        return 1, 28, 28
 
     def load(self, batch_size, *args, **kwargs):
         loader_args = dict()
@@ -73,7 +74,7 @@ class MNIST(DataHolder):
 class Omniglot(DataHolder):
     @property
     def dims(self):
-        return 105*105
+        return 1, 105, 105
 
     def load(self, batch_size, *args, **kwargs):
         loader_args = dict()
@@ -91,11 +92,33 @@ class Omniglot(DataHolder):
         return lambda: train_holder, lambda: test_holder
 
 
+@DataHolder.register_dataset('celeba')
+class CelebA(DataHolder):
+    @property
+    def dims(self):
+        return 3, 64, 64
+
+    def load(self, batch_size, *args, **kwargs):
+        loader_args = dict()
+        if 'device' in kwargs:
+            loader_args['pin_memory'] = 'cuda' in kwargs['device']
+        if 'num_workers' in kwargs:
+            loader_args['num_workers'] = kwargs['num_workers']
+
+        train_holder = DataLoader(
+            datasets.CelebA(root=self.DATA_ROOT, split='train', download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
+        test_holder = DataLoader(
+            datasets.CelebA(root=self.DATA_ROOT, split='test', download=True, transform=transforms.ToTensor()),
+            shuffle=True, batch_size=batch_size, **loader_args)
+        return lambda: train_holder, lambda: test_holder
+
+
 @DataHolder.register_dataset('fashionmnist')
 class FashionMNIST(DataHolder):
     @property
     def dims(self):
-        return 105*105
+        return 3, 1, 1  # TODO
 
     def load(self, batch_size, *args, **kwargs):
         loader_args = dict()
@@ -117,10 +140,11 @@ class FashionMNIST(DataHolder):
 class BreastCancer(DataHolder):
     @property
     def dims(self):
-        return 30
+        return 30,
 
     def load(self, batch_size, *_, **__):
         x, y = sklearn.datasets.load_breast_cancer(return_X_y=True)
+        # TODO: save/load in self.DATA_ROOT
         x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in
                                             sklearn.model_selection.train_test_split(x, y, shuffle=True))
         return lambda: batch_iterator(batch_size, x_train, y_train), lambda: batch_iterator(batch_size, x_test, y_test)
