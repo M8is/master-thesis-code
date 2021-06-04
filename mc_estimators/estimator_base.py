@@ -11,7 +11,8 @@ class MCEstimator(ABC, torch.nn.Module):
         self.sample_size = sample_size
 
     def forward(self, raw_params):
-        return self._sample(raw_params) if self.training else self.distribution.sample(raw_params, with_grad=False)
+        with torch.no_grad():
+            return self.distribution.sample(raw_params)
 
     @abstractmethod
     def _sample(self, raw_params):

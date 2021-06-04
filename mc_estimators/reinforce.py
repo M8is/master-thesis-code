@@ -7,9 +7,6 @@ class Reinforce(MCEstimator):
         self.baseline = baseline and self.sample_size > 1
         self.__loss_avg = None
 
-    def _sample(self, raw_params):
-        return self.distribution.sample(raw_params, with_grad=False)
-
     def backward(self, raw_params, loss_fn, retain_graph=False):
         samples = self.distribution.sample(raw_params, self.sample_size, with_grad=False)
         losses = loss_fn(samples).detach()

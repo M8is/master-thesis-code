@@ -10,7 +10,7 @@ from models.discrete_mixture import DiscreteMixture
 from models.linear import PureProbabilistic
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
-from utils.loss_holder import LossHolder
+from utils.tensor_holders import LossHolder
 from utils.seeds import fix_random_seed
 
 

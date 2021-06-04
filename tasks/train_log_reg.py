@@ -7,7 +7,7 @@ import models.logistic_regression
 from utils.data_holder import DataHolder
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
-from utils.loss_holder import LossHolder
+from utils.tensor_holders import LossHolder
 
 
 def train_log_reg(results_dir, dataset, device, param_dims, epochs, sample_size, learning_rate, mc_estimator,
