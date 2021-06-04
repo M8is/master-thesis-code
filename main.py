@@ -5,12 +5,12 @@ from shutil import copyfile
 import torch
 import yaml
 
-from tasks.plotting import plot_losses
+from tasks.plotting import plot_losses, plot_stds
 from tasks.train_log_reg import train_log_reg
 from tasks.train_polynomial import train_polynomial
 from tasks.train_vae import train_vae
 from utils.clean import clean
-from utils.loss_holder import LossHolder
+from utils.tensor_holders import LossHolder, TensorHolder
 from utils.seeds import fix_random_seed
 
 
@@ -26,11 +26,11 @@ def main(args):
 
     # Copy config file to results dir
     config_results_path = path.join(results_base_dir, path.basename(config_path))
-    if not path.exists(results_base_dir):
-        makedirs(results_base_dir)
+    makedirs(results_base_dir, exist_ok=True)
     copyfile(config_path, config_results_path)
 
     losses_per_task = {}
+    stds_per_task = {}
     if 'runs' in meta_config:
         configs = [{**meta_config, **run_config} for run_config in meta_config['runs']]
     else:
@@ -51,16 +51,17 @@ def main(args):
                 clean(**config)
 
             task = config.get('task', None)
-            if path.exists(results_dir):
+            train_loss = LossHolder(results_dir, train=True)
+            estimator_stds = TensorHolder(results_dir, 'estimator_stds')
+            if not train_loss.is_empty():
                 print(f"Skipping training; Loading existing results from '{results_dir}'...")
-                train_loss = LossHolder(results_dir, train=True)
                 test_loss = LossHolder(results_dir, train=False)
             else:
-                makedirs(results_dir)
+                makedirs(results_dir, exist_ok=True)
 
                 fix_random_seed(seed)
                 if task == 'vae':
-                    train_loss, test_loss = train_vae(**config)
+                    train_loss, test_loss, estimator_stds = train_vae(**config)
                 elif task == 'logreg':
                     train_loss, test_loss = train_log_reg(**config)
                 elif task == 'polynomial':
@@ -70,14 +71,24 @@ def main(args):
 
             if task not in losses_per_task:
                 losses_per_task[task] = dict()
+            if not estimator_stds.is_empty() and task not in stds_per_task:
+                stds_per_task[task] = dict()
 
             if config_subpath not in losses_per_task[task]:
                 losses_per_task[task][config_subpath] = config, [(train_loss.numpy(), test_loss.numpy())]
             else:
                 losses_per_task[task][config_subpath][1].append((train_loss.numpy(), test_loss.numpy()))
 
+            if config_subpath not in stds_per_task[task]:
+                stds_per_task[task][config_subpath] = config, [estimator_stds.numpy()]
+            else:
+                stds_per_task[task][config_subpath][1].append(estimator_stds.numpy())
+
+
+
     if args.plot:
         plot_losses(results_base_dir, losses_per_task)
+        plot_stds(results_base_dir, stds_per_task)
 
 
 if __name__ == '__main__':
