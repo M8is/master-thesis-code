@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 class Distribution(ABC):
     def __init__(self, output_size, device):
         self.param_dims = self._get_param_dims(output_size)
+        self.latent_dim = output_size
         self.device = device
 
     @abstractmethod

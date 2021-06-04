@@ -1,5 +1,3 @@
-from typing import List
-
 from mc_estimators.distributions import normal, exponential, poisson, bernoulli, categorical
 from mc_estimators.measure_valued_derivative import MVD
 from mc_estimators.pathwise import Pathwise
