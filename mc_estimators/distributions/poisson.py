@@ -3,13 +3,16 @@ from .exponential import Exponential
 
 
 class Poisson(Exponential):
+    def _get_param_dims(self, output_dim):
+        raise NotImplemented
+
     def sample(self, raw_params, size=1, with_grad=False):
         if with_grad:
             raise ValueError("Poisson cannot be reparameterized.")
         else:
             params = self._as_rate(raw_params)
             dist = torch.distributions.poisson.Poisson(params)
-            return dist.sample((size,)).to(self.device)
+            return dist.sample((size,)).to(self.device), params
 
     def mvd_sample(self, raw_params, size):
         rate = self._as_rate(raw_params)

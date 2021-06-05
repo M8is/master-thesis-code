@@ -63,10 +63,9 @@ def __train_epoch(vae_model, data_holder, device, optimizer):
         loss.backward()
         optimizer.step()
         if batch_id % 100 == 0:
-            raw_params, _ = vae_model(x_batch)
-            stds = vae_model.probabilistic.generate_stds(raw_params, loss_fn, optimizer.zero_grad)
             print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
-            estimator_stds.append(stds)
+        if batch_id % 20 == 0:
+            estimator_stds.append(vae_model.probabilistic.get_std(vae_model(x_batch)[0], loss_fn, optimizer.zero_grad))
         train_losses.append(loss + kld)
     test_losses.append(__test_epoch(vae_model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses), torch.stack(estimator_stds)

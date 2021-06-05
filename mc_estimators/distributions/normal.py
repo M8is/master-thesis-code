@@ -30,10 +30,11 @@ class MultivariateNormal(Distribution):
             raise ValueError(f"Plotting is not supported for {dims}-dimensional gaussians.")
 
     def sample(self, raw_params, size=1, with_grad=False):
-        mean, std = self.__prepare(raw_params)
+        params = self.__prepare(raw_params)
+        mean, std = params
         eps = torch.randn([size] + list(mean.shape)).to(self.device)
         samples = mean + eps * std
-        return samples if with_grad else samples.detach()
+        return (samples if with_grad else samples.detach()), params
 
     def mvd_sample(self, raw_params, size):
         mean, std = self.__prepare(raw_params)
@@ -50,23 +51,27 @@ class MultivariateNormal(Distribution):
             mean_grad = (mean_pos_losses - mean_neg_losses) / (np.sqrt(2 * np.pi) * std)
             std_pos_losses, std_neg_losses = std_losses
             std_grad = (std_pos_losses - std_neg_losses) / std
-        mean.backward(gradient=mean_grad / mean_grad.size(0), retain_graph=True)
-        std.backward(gradient=std_grad / std_grad.size(0), retain_graph=retain_graph)
+            mean_grad /= mean_grad.size(0)
+            std_grad /= std_grad.size(0)
+        mean.backward(gradient=mean_grad, retain_graph=True)
+        std.backward(gradient=std_grad, retain_graph=retain_graph)
+        return torch.cat((mean_grad, std_grad), dim=-1)
 
     def kl(self, raw_params):
         mean, std = self.__prepare(raw_params)
         return 0.5 * (mean.pow(2) + std.pow(2) - 2 * torch.log(std) - 1).sum(dim=1)
 
     def log_prob(self, raw_params, samples):
-        mean, std = self.__prepare(raw_params)
+        params = self.__prepare(raw_params)
+        mean, std = params
         dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std**2))
-        return dist.log_prob(samples)
+        return dist.log_prob(samples), params
 
     def __prepare(self, raw_params):
         mean, log_std = torch.split(raw_params, self.param_dims, dim=-1)
         log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
         std = torch.exp(log_std)
-        return mean, std
+        return torch.stack((mean, std))
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
         std_normal = torch.randn((sample_size, *mean.size())).to(self.device)

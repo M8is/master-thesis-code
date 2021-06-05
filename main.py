@@ -5,7 +5,7 @@ from shutil import copyfile
 import torch
 import yaml
 
-from tasks.plotting import plot_losses, plot_stds
+from tasks.plotting import plot_losses, plot_estimator_variances
 from tasks.train_log_reg import train_log_reg
 from tasks.train_polynomial import train_polynomial
 from tasks.train_vae import train_vae
@@ -88,7 +88,7 @@ def main(args):
 
     if args.plot:
         plot_losses(results_base_dir, losses_per_task)
-        plot_stds(results_base_dir, stds_per_task)
+        plot_estimator_variances(results_base_dir, stds_per_task)
 
 
 if __name__ == '__main__':

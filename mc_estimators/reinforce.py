@@ -7,12 +7,15 @@ class Reinforce(MCEstimator):
         self.baseline = baseline and self.sample_size > 1
         self.__loss_avg = None
 
-    def backward(self, raw_params, loss_fn, retain_graph=False):
-        samples = self.distribution.sample(raw_params, self.sample_size, with_grad=False)
+    def backward(self, raw_params, loss_fn, retain_graph=False, return_grad=False):
+        samples, _ = self.distribution.sample(raw_params, self.sample_size, with_grad=False)
         losses = loss_fn(samples).detach()
-        log_probs = self.distribution.log_prob(raw_params, samples)
+        log_probs, params = self.distribution.log_prob(raw_params, samples)
+        if return_grad:
+            params.retain_grad()
         baseline = self._get_baseline(losses) if self.baseline else 0
         ((losses - baseline) * log_probs).mean().backward(retain_graph=retain_graph)
+        return params.grad if return_grad else None
 
     def _get_baseline(self, losses):
         self.__loss_avg = losses.mean() if self.__loss_avg is None else .9 * self.__loss_avg + .1 * losses.mean()

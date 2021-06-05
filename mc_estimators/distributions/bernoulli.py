@@ -3,9 +3,12 @@ from .distribution_base import Distribution
 
 
 class Bernoulli(Distribution):
+    def _get_param_dims(self, output_dim):
+        raise NotImplemented
+
     def sample(self, raw_params, size=1, with_grad=False):
         params = self.__as_prob(raw_params)
-        return torch.distributions.Bernoulli(params).sample((size,))
+        return torch.distributions.Bernoulli(params).sample((size,)), params
 
     def mvd_sample(self, raw_params, size):
         return torch.tensor([1, 0]).reshape(2, 1, 1, 1, 1).to(self.device)
@@ -17,6 +20,7 @@ class Bernoulli(Distribution):
             grad = pos_losses - neg_losses
         assert grad.shape == prob.shape, f"Grad shape {grad.shape} != params shape {prob.shape}"
         prob.backward(grad, retain_graph=retain_graph)
+        return grad
 
     def kl(self, raw_params):
         p = self.__as_prob(raw_params)

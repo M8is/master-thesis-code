@@ -3,10 +3,14 @@ from .distribution_base import Distribution
 
 
 class Exponential(Distribution):
+    def _get_param_dims(self, output_dim):
+        raise NotImplemented
+
     def sample(self, raw_params, size=1, with_grad=False):
-        dist = torch.distributions.exponential.Exponential(self._as_rate(raw_params))
+        rate = self._as_rate(raw_params)
+        dist = torch.distributions.exponential.Exponential(rate)
         samples = dist.rsample((size,)) if with_grad else dist.sample((size,))
-        return samples.to(self.device)
+        return samples.to(self.device), rate
 
     def mvd_sample(self, raw_params, size):
         rate = self._as_rate(raw_params)
@@ -22,6 +26,7 @@ class Exponential(Distribution):
             grad = (1. / rate) * (pos_losses - neg_losses)
         assert grad.shape == rate.shape, f"Grad shape {grad.shape} != params shape {rate.shape}"
         rate.backward(gradient=grad, retain_graph=retain_graph)
+        return grad
 
     def kl(self, raw_params):
         params = self._as_rate(raw_params)

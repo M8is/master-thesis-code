@@ -5,14 +5,17 @@ from .distribution_base import Distribution
 
 
 class Categorical(Distribution):
+    def _get_param_dims(self, output_dim):
+        raise NotImplemented
+
     def sample(self, raw_params, size=1, with_grad=False):
         probs = self.__as_probs(raw_params.squeeze())
         if with_grad:
             log_probs = torch.log(probs)
             # TODO: test this
-            return torch.argmax(F.gumbel_softmax(log_probs))
+            return torch.argmax(F.gumbel_softmax(log_probs)), probs
         else:
-            return torch.distributions.Categorical(probs).sample((size,))
+            return torch.distributions.Categorical(probs).sample((size,)), probs
 
     def mvd_sample(self, raw_params, size):
         if size > 1:
@@ -28,6 +31,7 @@ class Categorical(Distribution):
             grad = losses - losses[:, -1]
         assert grad.shape == params.shape, f"Grad shape {grad.shape} != params shape {params.shape}"
         params.backward(grad, retain_graph=retain_graph)
+        return grad
 
     def pdf(self, raw_params):
         params = self.__as_probs(raw_params)
