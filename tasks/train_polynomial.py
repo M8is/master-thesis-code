@@ -1,82 +1,71 @@
-from os import path, makedirs
+from os import path
 
 import numpy as np
 import torch
 import torch.utils.data
 from matplotlib import pyplot as plt
 
-from mc_estimators.measure_valued_derivative import MVD
 from models.discrete_mixture import DiscreteMixture
-from models.linear import PureProbabilistic
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
 from utils.tensor_holders import LossHolder
-from utils.seeds import fix_random_seed
 
 
-def train_polynomial(seed, results_dir, device, epochs, sample_size, learning_rate, mc_estimator, param_dims,
-                     distribution, init_params, **kwargs):
+def train_polynomial(results_dir, device, epochs, sample_size, learning_rate, mc_estimator, param_dims, distribution,
+                     init_params, **kwargs):
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
 
-    if path.exists(results_dir):
-        print(f"Skipping training: '{results_dir}' already exists.")
-    else:
-        makedirs(results_dir)
-        fix_random_seed(seed)
+    raw_params = torch.nn.Parameter(torch.FloatTensor(init_params))
+    grad_mask = torch.FloatTensor(kwargs['grad_mask']).to(device) if 'grad_mask' in kwargs else None
 
-        model_params = torch.nn.Parameter(torch.FloatTensor(init_params))
-        grad_mask = torch.FloatTensor(kwargs['grad_mask']).to(device) if 'grad_mask' in kwargs else None
+    # Create model
+    estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
+    estimator.train()
+    optimizer = torch.optim.SGD(raw_params, lr=learning_rate)
 
-        # Create model
-        estimator = get_estimator(mc_estimator, distribution, sample_size, device, param_dims, **kwargs)
-        model = PureProbabilistic(estimator, model_params).to(device)
-        model.train()
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    print(f'Training with {estimator}.')
 
-        print(f'Training with {estimator}.')
-
-        __try_plot_pdf(model, 0, results_dir)
-        for epoch in range(1, epochs + 1):
-            print(f"Epoch: {epoch}/{epochs}", flush=True)
-            raw_params, x = model()
-
-            # TODO: kind of hacky workaround for now
-            if isinstance(model.probabilistic, MVD):
-                x.squeeze_(dim=2).squeeze_(dim=-1)
-            losses = polynomial(x)
-            optimizer.zero_grad()
-            # TODO: add kl backward
-            model.backward(raw_params, losses)
-            if grad_mask is not None:
-                model_params.grad *= grad_mask
-            optimizer.step()
-            train_losses.add(losses.detach().mean())
-            test_losses.add(__test_loss(model).mean())
-            if epoch % 100 == 0 or epoch == epochs:
-                __try_plot_pdf(model, epoch, results_dir)
-        torch.save(model, path.join(results_dir, f'{mc_estimator}_{epochs}.pt'))
-
+    __try_plot_pdf(raw_params, estimator, 0, results_dir)
+    for epoch in range(1, epochs + 1):
+        x = estimator(raw_params)
+        loss = polynomial(x).mean()
+        optimizer.zero_grad()
+        kld = estimator.distribution.kl(raw_params)
+        estimator.backward(raw_params, lambda samples: polynomial(samples))
+        if loss.requires_grad:
+            loss.backward()
+        if grad_mask is not None:
+            raw_params.grad *= grad_mask
+        optimizer.step()
+        train_losses.add(loss + kld)
+        test_losses.add(__test_loss(raw_params, estimator))
+        if epoch % 100 == 0 or epoch == epochs:
+            __try_plot_pdf(raw_params, estimator, epoch, results_dir)
+        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1]:.2f}, "
+              f"Test loss: {test_losses.numpy()[-1]:.2f}",
+              flush=True)
+    torch.save(raw_params, path.join(results_dir, f'{mc_estimator}_{epochs}.pt'))
     return train_losses, test_losses
 
 
-def __test_loss(model):
-    with eval_mode(model):
-        # TODO: sample more to get a mean test loss? One sample is very noisy...
-        raw_params, x = model()
-        losses = polynomial(x)
-        return losses
+def __test_loss(raw_params, estimator, n_samples=10):
+    with eval_mode(estimator):
+        losses = []
+        kld = estimator.distribution.kl(raw_params)
+        for _ in range(n_samples):
+            loss = polynomial(estimator(raw_params))
+            losses.append(loss + kld)
+        return torch.tensor(losses).mean()
 
 
-def __try_plot_pdf(model, iterations, results_dir):
+def __try_plot_pdf(raw_params, estimator, iterations, results_dir):
     try:
-        with eval_mode(model):
-            raw_params, _ = model()
-
-            if isinstance(model.probabilistic, DiscreteMixture):
+        with eval_mode(estimator):
+            if isinstance(estimator, DiscreteMixture):
                 x, pdf = None, 0
                 for i, (weight, c_raw_params) in enumerate(zip(raw_params[0].cpu().T, raw_params[1].cpu().transpose(0, 1))):
-                    x, c_pdf = model.probabilistic.component.distribution.pdf(c_raw_params)
+                    x, c_pdf = estimator.component.distribution.pdf(c_raw_params)
                     c_pdf = weight * c_pdf
                     pdf = c_pdf + pdf
                     if c_raw_params.size(-1) == 1:
@@ -94,7 +83,7 @@ def __try_plot_pdf(model, iterations, results_dir):
                     f = polynomial(torch.stack((x, y), dim=-1)).numpy()
                     fig.contourf(x, y, f, label="f(x)")
             else:
-                x, pdf = model.probabilistic.distribution.pdf(raw_params)
+                x, pdf = estimator.distribution.pdf(raw_params)
                 plt.plot(x, pdf, label="p(x)")
                 x = torch.tensor(np.linspace(-3, 3, 200))
                 plt.plot(x, polynomial(x), linestyle='dashed', label="f(x)")

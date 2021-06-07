@@ -1,4 +1,4 @@
-from os import path, makedirs
+from os import path
 
 import torch
 import torch.utils.data
@@ -40,40 +40,35 @@ def __train_epoch(model, data_holder, device, optimizer):
     train_losses = []
     test_losses = []
     model.train()
-    for x_batch, y_batch in data_holder.train:
+    for batch_id, (x_batch, y_batch) in enumerate(data_holder.train):
         raw_params, y_preds = model(x_batch.to(device))
-        losses = __bce_loss(y_batch.to(device), y_preds)
-        # TODO: add kl backward
+        loss = __bce_loss(y_batch.to(device), y_preds).mean()
+        kld = model.probabilistic.distribution.kl(raw_params).mean()
         optimizer.zero_grad()
-        model.backward(raw_params, losses)
+        kld.backward(retain_graph=True)
+        model.probabilistic.backward(raw_params, lambda samples: __bce_loss(y_batch, model.predict(samples, x_batch)))
+        loss.backward()
         optimizer.step()
-        train_losses.append(__mean_train_loss(model, data_holder, device))
-        test_losses.append(__mean_test_loss(model, data_holder, device))
+        if batch_id % 100 == 0:
+            print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
+        train_losses.append(loss + kld)
+    test_losses.append(__test_epoch(model, data_holder, device))
     return torch.stack(train_losses), torch.stack(test_losses)
 
 
-def __mean_train_loss(model, data_holder, device):
-    with eval_mode(model):
-        test_losses = []
-        for x_batch, y_batch in data_holder.train:
-            raw_params, y_preds = model(x_batch.to(device))
-            kl = model.probabilistic.distribution.kl(raw_params)
-            losses = __bce_loss(y_batch.to(device), y_preds) + kl
-            test_losses.append(losses.detach().mean())
-        return torch.stack(test_losses).mean()
-
-
-def __mean_test_loss(model, data_holder, device):
+def __test_epoch(model, data_holder, device):
     with eval_mode(model):
         test_losses = []
         for x_batch, y_batch in data_holder.test:
-            raw_params, y_preds = model(x_batch.to(device))
-            kl = model.probabilistic.distribution.kl(raw_params)
-            losses = __bce_loss(y_batch.to(device), y_preds) + kl
-            test_losses.append(losses.detach().mean())
-        return torch.stack(test_losses).mean()
+            x_batch = x_batch.to(device)
+            raw_params, y_preds = model(x_batch)
+            loss = __bce_loss(y_batch.to(device), y_preds).mean()
+            kld = model.probabilistic.distribution.kl(raw_params).mean()
+            test_losses.append(loss + kld)
+        return torch.tensor(test_losses).mean()
 
 
 def __bce_loss(y, y_pred):
+    # Use no reduction to get separate losses for each image
     binary_cross_entropy = torch.nn.BCELoss(reduction='none')
-    return binary_cross_entropy(y_pred, y.expand_as(y_pred).double())
+    return binary_cross_entropy(y_pred, y.expand_as(y_pred)).sum(dim=-1)

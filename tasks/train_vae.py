@@ -18,15 +18,15 @@ def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, e
     # Create model
     estimator = get_estimator(estimator_tag=mc_estimator, distribution_tag=distribution, device=device,
                               latent_dim=latent_dim, **kwargs)
-    vae_network = get_vae(vae_type, estimator, data_holder.dims, hidden_dims).to(device)
-    optimizer = torch.optim.Adam(vae_network.parameters(), lr=learning_rate)
+    models = get_vae(vae_type, estimator, data_holder.dims, hidden_dims).to(device)
+    optimizer = torch.optim.Adam(models.parameters(), lr=learning_rate)
 
     print(f'Training with {estimator}.')
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
     estimator_stds = TensorHolder(results_dir, 'estimator_stds')
     for epoch in range(1, epochs + 1):
-        train_loss, test_loss, est_std = __train_epoch(vae_network, data_holder, device, optimizer)
+        train_loss, test_loss, est_std = __train_epoch(models, data_holder, device, optimizer)
         train_losses.add(train_loss)
         test_losses.add(test_loss)
         estimator_stds.add(est_std)
@@ -34,51 +34,53 @@ def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, e
         train_losses.save()
         test_losses.save()
         estimator_stds.save()
-        torch.save(vae_network, file_name)
+        torch.save(models, file_name)
         print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
               f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
               flush=True)
-    __generate_images(vae_network, path.join(results_dir, f'images_{epochs}'), data_holder, device)
+    __generate_images(models, path.join(results_dir, f'images_{epochs}'), data_holder, device)
     return train_losses, test_losses, estimator_stds
 
 
-def __train_epoch(vae_model, data_holder, device, optimizer):
+def __train_epoch(model, data_holder, device, optimizer):
     train_losses = []
     test_losses = []
     estimator_stds = []
-    vae_model.train()
+    model.train()
     print(60 * "-")
     for batch_id, (x_batch, _) in enumerate(data_holder.train):
         x_batch = x_batch.to(device)
-        raw_params, x_recon = vae_model(x_batch)
+        raw_params, x_recon = model(x_batch)
         loss = __bce_loss(x_batch, x_recon, len(data_holder.dims)).mean()
-        kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
+        kld = model.probabilistic.distribution.kl(raw_params).mean()
         optimizer.zero_grad()
         kld.backward(retain_graph=True)
 
         def loss_fn(samples):
-            return __bce_loss(x_batch, vae_model.decoder(samples), len(data_holder.dims))
+            return __bce_loss(x_batch, model.decoder(samples), len(data_holder.dims))
 
-        vae_model.probabilistic.backward(raw_params, loss_fn)
+        model.probabilistic.backward(raw_params, loss_fn)
         loss.backward()
         optimizer.step()
         if batch_id % 100 == 0:
             print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
         if batch_id % 20 == 0:
-            estimator_stds.append(vae_model.probabilistic.get_std(vae_model(x_batch)[0], loss_fn, optimizer.zero_grad))
+            raw_params, _ = model(x_batch)
+            estimator_stds.append(model.probabilistic.get_std(raw_params, optimizer.zero_grad, loss_fn))
+
         train_losses.append(loss + kld)
-    test_losses.append(__test_epoch(vae_model, data_holder, device))
-    return torch.stack(train_losses), torch.stack(test_losses), torch.stack(estimator_stds)
+    test_losses.append(__test_epoch(model, data_holder, device))
+    return torch.stack(train_losses), torch.stack(test_losses), torch.stack(estimator_stds) if estimator_stds else None
 
 
-def __test_epoch(vae_model, data_holder, device):
-    with eval_mode(vae_model):
+def __test_epoch(model, data_holder, device):
+    with eval_mode(model):
         test_losses = []
         for x_batch, _ in data_holder.test:
             x_batch = x_batch.to(device)
-            raw_params, x_preds = vae_model(x_batch)
-            loss = __bce_loss(x_batch, x_preds, len(data_holder.dims)).mean()
-            kld = vae_model.probabilistic.distribution.kl(raw_params).mean()
+            raw_params, x_recons = model(x_batch)
+            loss = __bce_loss(x_batch, x_recons, len(data_holder.dims)).mean()
+            kld = model.probabilistic.distribution.kl(raw_params).mean()
             test_losses.append(loss + kld)
         return torch.tensor(test_losses).mean()
 
