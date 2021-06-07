@@ -16,6 +16,8 @@ def plot_losses(plot_dir, losses_per_task):
             __plot(train_losses.mean(axis=0), train_losses.std(axis=0), **config)
             dataset = config['dataset']
         __legend()
+        plt.xlabel("Iterations")
+        plt.ylabel("Loss")
         plt.title(f"{dataset} train loss")
         plt.savefig(path.join(plot_dir, 'train.png'))
         plt.clf()
@@ -25,6 +27,8 @@ def plot_losses(plot_dir, losses_per_task):
             test_losses = np.stack(test_losses)
             __plot(test_losses.mean(axis=0), test_losses.std(axis=0), **config)
         __legend()
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
         plt.title(f"{dataset} test loss")
         plt.savefig(path.join(plot_dir, 'test.png'))
         plt.clf()
@@ -40,16 +44,18 @@ def plot_estimator_variances(plot_dir, stds_per_task):
         plt.yscale('log')
         for config, stds in configs_and_losses.values():
             variances = np.array(stds) ** 2
-            __plot(variances.mean(axis=0), variances.std(axis=0), **config)
+            __plot(variances.mean(axis=0), variances.std(axis=0), plot_label=config['mc_estimator'])
             dataset = config['dataset']
         __legend()
+        plt.xlabel("Iterations [x10]")
+        plt.ylabel("Variance")
         plt.title(f"{dataset} estimator variances")
         plt.savefig(path.join(plot_dir, 'variances.png'))
         plt.clf()
 
 
-def __plot(means, stds, **kwargs):
-    plt.plot(means, label=kwargs.get('plot_label', kwargs['mc_estimator']), linewidth=.5)
+def __plot(means, stds, plot_label=None, **_):
+    plt.plot(means, label=plot_label, linewidth=.5)
     if stds is not None:
         plt.fill_between(range(len(means)), means - stds, means + stds, alpha=.3)
 

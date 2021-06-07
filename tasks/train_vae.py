@@ -12,7 +12,7 @@ from utils.tensor_holders import LossHolder, TensorHolder
 
 
 def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, epochs, learning_rate,
-              mc_estimator, distribution, batch_size, **kwargs):
+              mc_estimator, distribution, batch_size, compute_variance=False, **kwargs):
     data_holder = DataHolder.get(dataset, batch_size)
 
     # Create model
@@ -26,14 +26,15 @@ def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, e
     test_losses = LossHolder(results_dir, train=False)
     estimator_stds = TensorHolder(results_dir, 'estimator_stds')
     for epoch in range(1, epochs + 1):
-        train_loss, test_loss, est_std = __train_epoch(models, data_holder, device, optimizer)
+        train_loss, test_loss, est_std = __train_epoch(models, data_holder, device, optimizer, compute_variance)
         train_losses.add(train_loss)
         test_losses.add(test_loss)
-        estimator_stds.add(est_std)
+        if compute_variance:
+            estimator_stds.add(est_std)
+            estimator_stds.save()
         file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
         train_losses.save()
         test_losses.save()
-        estimator_stds.save()
         torch.save(models, file_name)
         print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
               f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
@@ -42,7 +43,7 @@ def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, e
     return train_losses, test_losses, estimator_stds
 
 
-def __train_epoch(model, data_holder, device, optimizer):
+def __train_epoch(model, data_holder, device, optimizer, compute_variance):
     train_losses = []
     test_losses = []
     estimator_stds = []
@@ -64,7 +65,7 @@ def __train_epoch(model, data_holder, device, optimizer):
         optimizer.step()
         if batch_id % 100 == 0:
             print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
-        if batch_id % 20 == 0:
+        if compute_variance and batch_id % 20 == 0:
             raw_params, _ = model(x_batch)
             estimator_stds.append(model.probabilistic.get_std(raw_params, optimizer.zero_grad, loss_fn))
 

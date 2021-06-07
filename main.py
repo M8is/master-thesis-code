@@ -71,20 +71,20 @@ def main(args):
 
             if task not in losses_per_task:
                 losses_per_task[task] = dict()
-            if not estimator_stds.is_empty() and task not in stds_per_task:
-                stds_per_task[task] = dict()
 
             if config_subpath not in losses_per_task[task]:
                 losses_per_task[task][config_subpath] = config, [(train_loss.numpy(), test_loss.numpy())]
             else:
                 losses_per_task[task][config_subpath][1].append((train_loss.numpy(), test_loss.numpy()))
 
-            if config_subpath not in stds_per_task[task]:
-                stds_per_task[task][config_subpath] = config, [estimator_stds.numpy()]
-            else:
-                stds_per_task[task][config_subpath][1].append(estimator_stds.numpy())
+            if not estimator_stds.is_empty():
+                if task not in stds_per_task:
+                    stds_per_task[task] = dict()
 
-
+                if config_subpath not in stds_per_task[task]:
+                    stds_per_task[task][config_subpath] = config, [estimator_stds.numpy()]
+                else:
+                    stds_per_task[task][config_subpath][1].append(estimator_stds.numpy())
 
     if args.plot:
         plot_losses(results_base_dir, losses_per_task)

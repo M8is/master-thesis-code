@@ -16,15 +16,17 @@ class MCEstimator(ABC, torch.nn.Module):
         with torch.no_grad():
             return self.distribution.sample(raw_params)[0]
 
-    def get_std(self, raw_params, loss_fn, zero_grad_fn, n_estimates=100):
+    def get_std(self, raw_params, zero_grad_fn, loss_fn, n_estimates=500):
+        old_sample_size = self.sample_size
+        self.sample_size = 1
         grads = []
         zero_grad_fn()
         for i in range(n_estimates):
-            raw_params.retain_grad()
-            grad = self.backward(raw_params, loss_fn, retain_graph=(i+1) < n_estimates, return_grad=True)
-            grads.append(grad.detach().mean())
+            grad = self.backward(raw_params, loss_fn, retain_graph=(i + 1) < n_estimates, return_grad=True)
+            grads.append(grad)
             zero_grad_fn()
-        return torch.stack(grads).std(dim=0)
+        self.sample_size = old_sample_size
+        return torch.stack(grads).std(dim=0).mean()
 
     @abstractmethod
     def backward(self, raw_params, loss_fn, retain_graph=False, return_grad=False) -> Optional[torch.Tensor]:
