@@ -1,8 +1,6 @@
 task: 'polynomial'
 seeds:
   - 2930489
-mc_estimator: 'MVD'
-selector_estimator: 'MVD'
 distribution: 'GaussianMixture'
 n_components: 3
 latent_dim: 1
@@ -17,6 +15,10 @@ init_params:
   - 2.0
   - 0.1
 epochs: 500
-sample_size: 1
 learning_rate: 0.001
 device: 'cuda'
+runs:
+  - mc_estimator: 'mvd'
+    selector_estimator: 'mvd'
+    plot_label: 'MVD 1 sample'
+    sample_size: 1

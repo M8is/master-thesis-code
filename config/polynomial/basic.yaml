@@ -1,0 +1,27 @@
+task: 'polynomial'
+seeds:
+  - 2930489
+distribution: 'normal'
+latent_dim: 1
+init_params:
+  - 0.1
+  - -1
+epochs: 500  # One epoch is equivalent to one gradient step.
+learning_rate: 0.001
+device: 'cuda'
+runs:
+  - mc_estimator: 'reinforce'
+    plot_label: 'Reinforce 1 sample'
+    sample_size: 1
+  - mc_estimator: 'reinforce'
+    plot_label: 'Reinforce 2 samples'
+    sample_size: 2
+  - mc_estimator: 'mvd'
+    plot_label: 'MVD 1 sample'
+    sample_size: 1
+  - mc_estimator: 'pathwise'
+    plot_label: 'Pathwise 1 sample'
+    sample_size: 1
+  - mc_estimator: 'pathwise'
+    plot_label: 'Pathwise 2 samples'
+    sample_size: 2

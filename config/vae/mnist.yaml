@@ -16,18 +16,18 @@ epochs: 10
 learning_rate: 0.001
 device: 'cuda'
 runs:
-  - mc_estimator: 'reinforce'
-    plot_label: 'Reinforce 10 samples'
-    sample_size: 10
+  #- mc_estimator: 'reinforce'
+  #  plot_label: 'Reinforce 10 samples'
+  #  sample_size: 10
   - mc_estimator: 'reinforce'
     plot_label: 'Reinforce 40 samples'
     sample_size: 40
   - mc_estimator: 'mvd'
     plot_label: 'MVD 1 sample'
     sample_size: 1
-  - mc_estimator: 'pathwise'
-    plot_label: 'Pathwise 1 sample'
-    sample_size: 1
+  #- mc_estimator: 'pathwise'
+  #  plot_label: 'Pathwise 1 sample'
+  #  sample_size: 1
   - mc_estimator: 'pathwise'
     plot_label: 'Pathwise 40 samples'
     sample_size: 40
