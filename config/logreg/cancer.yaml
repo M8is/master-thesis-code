@@ -8,17 +8,16 @@ seeds:
 dataset: 'cancer'
 batch_size: 32
 distribution: 'MultivariateNormal'
-latent_dim: 30
 epochs: 100
 learning_rate: 0.001
-device: 'cuda'
+device: 'cpu'
 runs:
   - mc_estimator: 'reinforce'
     plot_label: 'Reinforce 10 samples'
     sample_size: 10
   - mc_estimator: 'reinforce'
-    plot_label: 'Reinforce 60 samples'
-    sample_size: 60
+    plot_label: 'Reinforce 120 samples'
+    sample_size: 120
   - mc_estimator: 'mvd'
     plot_label: 'MVD 1 sample'
     sample_size: 1
@@ -26,5 +25,5 @@ runs:
     plot_label: 'Pathwise 1 sample'
     sample_size: 1
   - mc_estimator: 'pathwise'
-    plot_label: 'Pathwise 60 samples'
-    sample_size: 60
+    plot_label: 'Pathwise 120 samples'
+    sample_size: 120
