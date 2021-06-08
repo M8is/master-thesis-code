@@ -62,4 +62,4 @@ def __plot(means, stds, plot_label=None, **_):
 
 def __legend():
     legend = plt.legend()
-    plt.setp(legend.get_lines(), linewidth=1)
+    plt.setp(legend.get_lines(), linewidth=2)
