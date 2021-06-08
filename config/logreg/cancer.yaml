@@ -10,7 +10,7 @@ batch_size: 32
 distribution: 'MultivariateNormal'
 epochs: 100
 learning_rate: 0.001
-device: 'cpu'
+device: 'cuda'
 runs:
   - mc_estimator: 'reinforce'
     plot_label: 'Reinforce 10 samples'
