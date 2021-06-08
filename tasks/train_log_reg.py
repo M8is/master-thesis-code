@@ -8,11 +8,11 @@ import models.logistic_regression
 from utils.data_holder import DataHolder
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
-from utils.tensor_holders import LossHolder
+from utils.tensor_holders import LossHolder, TensorHolder
 
 
 def train_log_reg(results_dir, dataset, device, epochs, sample_size, learning_rate, mc_estimator, distribution,
-                  batch_size, **kwargs):
+                  batch_size, compute_variance=False, **kwargs):
     data_holder = DataHolder.get(dataset, batch_size)
     n_features = prod(data_holder.dims)
 
@@ -24,10 +24,14 @@ def train_log_reg(results_dir, dataset, device, epochs, sample_size, learning_ra
     print(f'Training with {estimator}.')
     train_losses = LossHolder(results_dir, train=True)
     test_losses = LossHolder(results_dir, train=False)
+    estimator_stds = TensorHolder(results_dir, 'estimator_stds')
     for epoch in range(1, epochs + 1):
-        train_loss, test_loss = __train_epoch(model, data_holder, device, optimizer)
+        train_loss, test_loss, est_std = __train_epoch(model, data_holder, device, optimizer, compute_variance)
         train_losses.add(train_loss.mean())
         test_losses.add(test_loss.mean())
+        if compute_variance:
+            estimator_stds.add(est_std)
+            estimator_stds.save()
         train_losses.save()
         test_losses.save()
         if epoch % 5 == 0:
@@ -35,12 +39,13 @@ def train_log_reg(results_dir, dataset, device, epochs, sample_size, learning_ra
                   f"Test loss: {test_losses.numpy()[-1]:.2f}")
     torch.save(model, path.join(results_dir, f'{mc_estimator}_{epochs}.pt'))
 
-    return train_losses, test_losses
+    return train_losses, test_losses, estimator_stds
 
 
-def __train_epoch(model, data_holder, device, optimizer):
+def __train_epoch(model, data_holder, device, optimizer, compute_variance):
     train_losses = []
     test_losses = []
+    estimator_stds = []
     model.train()
     for batch_id, (x_batch, y_batch) in enumerate(data_holder.train):
         x_batch = x_batch.flatten(start_dim=1).to(device)
@@ -50,11 +55,18 @@ def __train_epoch(model, data_holder, device, optimizer):
         kld = model.probabilistic.distribution.kl(raw_params).mean()
         optimizer.zero_grad()
         kld.backward(retain_graph=True)
-        model.probabilistic.backward(raw_params, lambda samples: __bce_loss(y_batch, model.predict(samples, x_batch)))
+
+        def loss_fn(samples):
+            return __bce_loss(y_batch, model.predict(samples, x_batch))
+
+        model.probabilistic.backward(raw_params, loss_fn)
         optimizer.step()
+        if compute_variance and batch_id % 5 == 0:
+            raw_params, _ = model(x_batch)
+            estimator_stds.append(model.probabilistic.get_std(raw_params, optimizer.zero_grad, loss_fn, n_estimates=50))
         train_losses.append(loss + kld)
     test_losses.append(__test_epoch(model, data_holder, device))
-    return torch.stack(train_losses), torch.stack(test_losses)
+    return torch.stack(train_losses), torch.stack(test_losses), torch.stack(estimator_stds) if estimator_stds else None
 
 
 def __test_epoch(model, data_holder, device):

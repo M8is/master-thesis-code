@@ -60,7 +60,7 @@ def main(args):
                 if task == 'vae':
                     train_loss, test_loss, estimator_stds = train_vae(**config)
                 elif task == 'logreg':
-                    train_loss, test_loss = train_log_reg(**config)
+                    train_loss, test_loss, estimator_stds = train_log_reg(**config)
                 elif task == 'polynomial':
                     train_loss, test_loss = train_polynomial(**config)
                 else:
