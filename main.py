@@ -6,9 +6,9 @@ import torch
 import yaml
 
 from tasks.plotting import plot_losses, plot_estimator_variances
-from tasks.train_log_reg import train_log_reg
+from tasks.train_log_reg import TrainLogReg
 from tasks.train_polynomial import train_polynomial
-from tasks.train_vae import train_vae
+from tasks.train_vae import TrainVAE
 from utils.clean import clean
 from utils.tensor_holders import LossHolder, TensorHolder
 from utils.seeds import fix_random_seed
@@ -58,9 +58,9 @@ def main(args):
 
                 fix_random_seed(seed)
                 if task == 'vae':
-                    train_loss, test_loss, estimator_stds = train_vae(**config)
+                    train_loss, test_loss, estimator_stds = TrainVAE(**config).train()
                 elif task == 'logreg':
-                    train_loss, test_loss, estimator_stds = train_log_reg(**config)
+                    train_loss, test_loss, estimator_stds = TrainLogReg(**config).train()
                 elif task == 'polynomial':
                     train_loss, test_loss = train_polynomial(**config)
                 else:

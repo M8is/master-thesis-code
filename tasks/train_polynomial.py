@@ -11,6 +11,7 @@ from utils.eval_util import eval_mode
 from utils.tensor_holders import LossHolder
 
 
+# TODO: migrate to Trainer class (requires 'fake' data_holder)
 def train_polynomial(results_dir, device, epochs, sample_size, learning_rate, mc_estimator, param_dims, distribution,
                      init_params, **kwargs):
     train_losses = LossHolder(results_dir, train=True)

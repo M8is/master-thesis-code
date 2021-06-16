@@ -1,109 +1,57 @@
+import torch
 from os import path, makedirs
 
-import torch
-import torch.utils.data
 from torchvision.utils import save_image
 
-from utils.data_holder import DataHolder
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
 from utils.model_factory import get_vae
-from utils.tensor_holders import LossHolder, TensorHolder
+from utils.trainer import Trainer
 
 
-def train_vae(results_dir, vae_type, dataset, device, hidden_dims, latent_dim, epochs, learning_rate,
-              mc_estimator, distribution, batch_size, compute_variance=False, **kwargs):
-    data_holder = DataHolder.get(dataset, batch_size)
+class TrainVAE(Trainer):
+    def __init__(self, vae_type, hidden_dims, sample_size, learning_rate, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        estimator_tag = kwargs['mc_estimator']
+        distribution_tag = kwargs['distribution']
+        estimator = get_estimator(estimator_tag, distribution_tag, sample_size, self.device, self.latent_dim, *args, **kwargs)
+        self.__model = get_vae(vae_type, estimator, self.data_holder.dims, hidden_dims).to(self.device)
+        self.__optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
-    # Create model
-    estimator = get_estimator(estimator_tag=mc_estimator, distribution_tag=distribution, device=device,
-                              latent_dim=latent_dim, **kwargs)
-    models = get_vae(vae_type, estimator, data_holder.dims, hidden_dims).to(device)
-    optimizer = torch.optim.Adam(models.parameters(), lr=learning_rate)
+    @property
+    def variance_interval(self):
+        return 20
 
-    print(f'Training with {estimator}.')
-    train_losses = LossHolder(results_dir, train=True)
-    test_losses = LossHolder(results_dir, train=False)
-    estimator_stds = TensorHolder(results_dir, 'estimator_stds')
-    for epoch in range(1, epochs + 1):
-        train_loss, test_loss, est_std = __train_epoch(models, data_holder, device, optimizer, compute_variance)
-        train_losses.add(train_loss)
-        test_losses.add(test_loss)
-        if compute_variance:
-            estimator_stds.add(est_std)
-            estimator_stds.save()
-        file_name = path.join(results_dir, f'{mc_estimator}_{epoch}.pt')
-        train_losses.save()
-        test_losses.save()
-        torch.save(models, file_name)
-        print(f"Epoch: {epoch}/{epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
-              f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
-              flush=True)
-    __generate_images(models, path.join(results_dir, f'images_{epochs}'), data_holder, device)
-    return train_losses, test_losses, estimator_stds
+    @property
+    def model(self):
+        return self.__model
 
+    @property
+    def optimizer(self):
+        return self.__optimizer
 
-def __train_epoch(model, data_holder, device, optimizer, compute_variance):
-    train_losses = []
-    test_losses = []
-    estimator_stds = []
-    model.train()
-    print(60 * "-")
-    for batch_id, (x_batch, _) in enumerate(data_holder.train):
-        x_batch = x_batch.to(device)
-        raw_params, x_recon = model(x_batch)
-        loss = __bce_loss(x_batch, x_recon, len(data_holder.dims)).mean()
-        kld = model.probabilistic.distribution.kl(raw_params).mean()
-        optimizer.zero_grad()
-        kld.backward(retain_graph=True)
+    def loss(self, inputs, outputs):
+        x, x_recon = inputs, outputs
+        n_data_dims = len(x.size()) - 1
+        # Use no reduction to get separate losses for each image
+        binary_cross_entropy = torch.nn.BCELoss(reduction='none')
+        return binary_cross_entropy(x_recon, x.expand_as(x_recon)).flatten(start_dim=-n_data_dims).sum(dim=-1)
 
-        def loss_fn(samples):
-            return __bce_loss(x_batch, model.decoder(samples), len(data_holder.dims))
+    def post_training(self):
+        self.__generate_images()
 
-        model.probabilistic.backward(raw_params, loss_fn)
-        loss.backward()
-        optimizer.step()
-        if batch_id % 100 == 0:
-            print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
-        if compute_variance and batch_id % 20 == 0:
-            raw_params, _ = model(x_batch)
-            estimator_stds.append(model.probabilistic.get_std(raw_params, optimizer.zero_grad, loss_fn))
+    def __generate_images(self):
+        if not path.exists(self.results_dir):
+            makedirs(self.results_dir)
+        else:
+            print(f"Skipping: '{self.results_dir}' already exists.")
+            return
 
-        train_losses.append(loss + kld)
-    test_losses.append(__test_epoch(model, data_holder, device))
-    return torch.stack(train_losses), torch.stack(test_losses), torch.stack(estimator_stds) if estimator_stds else None
-
-
-def __test_epoch(model, data_holder, device):
-    with eval_mode(model):
-        test_losses = []
-        for x_batch, _ in data_holder.test:
-            x_batch = x_batch.to(device)
-            raw_params, x_recons = model(x_batch)
-            loss = __bce_loss(x_batch, x_recons, len(data_holder.dims)).mean()
-            kld = model.probabilistic.distribution.kl(raw_params).mean()
-            test_losses.append(loss + kld)
-        return torch.tensor(test_losses).mean()
-
-
-def __generate_images(model, output_dir, data_holder, device):
-    if not path.exists(output_dir):
-        makedirs(output_dir)
-    else:
-        print(f"Skipping: '{output_dir}' already exists.")
-        return
-
-    with eval_mode(model):
-        print(f'Generating images for in `{output_dir}`...')
-        n = min(data_holder.batch_size, 8)
-        for batch_id, (x_batch, _) in enumerate(data_holder.test):
-            x_batch = x_batch[:n].to(device)
-            _, x_pred_batch = model(x_batch)
-            comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
-            save_image(comparison, path.join(output_dir, f'recon_{batch_id}.png'), nrow=n)
-
-
-def __bce_loss(x, x_recon, n_data_dims):
-    # Use no reduction to get separate losses for each image
-    binary_cross_entropy = torch.nn.BCELoss(reduction='none')
-    return binary_cross_entropy(x_recon, x.expand_as(x_recon)).flatten(start_dim=-n_data_dims).sum(dim=-1)
+        with eval_mode(self.model):
+            print(f'Generating images for in `{self.results_dir}`...')
+            n = min(self.data_holder.batch_size, 8)
+            for batch_id, (x_batch, _) in enumerate(self.data_holder.test):
+                x_batch = x_batch[:n].to(self.device)
+                _, x_pred_batch = self.model(x_batch)
+                comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
+                save_image(comparison, path.join(self.results_dir, f'recon_{batch_id}.png'), nrow=n)
