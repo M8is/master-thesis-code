@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import scipy.stats
 import torch
@@ -9,14 +11,18 @@ class MultivariateNormal(Distribution):
     MIN_LOG_STD = -10
     MAX_LOG_STD = 6
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @staticmethod
+    def param_dims(latent_dim: int) -> Tuple[int, ...]:
+        return latent_dim, latent_dim
 
-    def _get_param_dims(self, output_dim):
-        return [output_dim, output_dim]
+    def _as_params(self, raw_params):
+        mean, log_std = torch.split(raw_params, raw_params.size(-1) // 2, dim=-1)
+        log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
+        std = torch.exp(log_std)
+        return torch.stack((mean, std))
 
-    def pdf(self, raw_params):
-        mean, std = self.__prepare(raw_params.cpu())
+    def pdf(self):
+        mean, std = self.params.cpu()
         dims = mean.size(-1)
         if dims == 1:
             linspace = np.linspace(-3, 3, 300)
@@ -29,21 +35,23 @@ class MultivariateNormal(Distribution):
         else:
             raise ValueError(f"Plotting is not supported for {dims}-dimensional gaussians.")
 
-    def sample(self, raw_params, size=1, with_grad=False):
-        params = self.__prepare(raw_params)
-        mean, std = params
-        eps = torch.randn([size] + list(mean.shape)).to(self.device)
-        samples = mean + eps * std
-        return (samples if with_grad else samples.detach()), params
+    def sample(self, sample_shape: torch.Size = torch.Size([])) -> torch.Tensor:
+        with torch.no_grad():
+            return self.rsample(sample_shape)
 
-    def mvd_sample(self, raw_params, size):
-        mean, std = self.__prepare(raw_params)
+    def rsample(self, sample_shape: torch.Size = torch.Size([])) -> torch.Tensor:
+        mean, std = self.params
+        eps = torch.randn(sample_shape + mean.shape).to(self.device)
+        return mean + eps * std
+
+    def mvd_sample(self, size) -> torch.Tensor:
+        mean, std = self.params
         mean_samples = self.__mean_samples(mean, std, size)
         std_samples = self.__std_samples(mean, std, size)
         return torch.stack((mean_samples, std_samples))
 
-    def mvd_backward(self, raw_params, losses, retain_graph):
-        mean, std = self.__prepare(raw_params)
+    def mvd_backward(self, losses, retain_graph):
+        mean, std = self.params
         with torch.no_grad():
             losses = losses.mean(dim=2).transpose(-2, -1)  # Mean over samples
             mean_losses, std_losses = losses
@@ -57,21 +65,14 @@ class MultivariateNormal(Distribution):
         std.backward(gradient=std_grad, retain_graph=retain_graph)
         return torch.cat((mean_grad, std_grad), dim=-1)
 
-    def kl(self, raw_params):
-        mean, std = self.__prepare(raw_params)
+    def kl(self):
+        mean, std = self.params
         return 0.5 * (mean.pow(2) + std.pow(2) - 2 * torch.log(std) - 1).sum(dim=1)
 
-    def log_prob(self, raw_params, samples):
-        params = self.__prepare(raw_params)
-        mean, std = params
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std**2))
-        return dist.log_prob(samples), params
-
-    def __prepare(self, raw_params):
-        mean, log_std = torch.split(raw_params, self.param_dims, dim=-1)
-        log_std = torch.clip(log_std, MultivariateNormal.MIN_LOG_STD, MultivariateNormal.MAX_LOG_STD)
-        std = torch.exp(log_std)
-        return torch.stack((mean, std))
+    def log_prob(self, value):
+        mean, std = self.params
+        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(std ** 2))
+        return dist.log_prob(value)
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
         std_normal = torch.randn((sample_size, *mean.size())).to(self.device)
@@ -97,7 +98,7 @@ class MultivariateNormal(Distribution):
         return mean + std * samples
 
     @staticmethod
-    def __replace_diagonal(target, new_diagonal):
+    def __replace_diagonal(target, new_diagonal) -> torch.Tensor:
         mask = 1. - torch.ones_like(new_diagonal).diag_embed()
         return mask * target + new_diagonal.diag_embed()
 

@@ -3,42 +3,35 @@ from .distribution_base import Distribution
 
 
 class Exponential(Distribution):
-    def _get_param_dims(self, output_dim):
-        raise NotImplemented
+    def _as_params(self, raw_params):
+        return torch.exp(raw_params)
 
-    def sample(self, raw_params, size=1, with_grad=False):
-        rate = self._as_rate(raw_params)
-        dist = torch.distributions.exponential.Exponential(rate)
-        samples = dist.rsample((size,)) if with_grad else dist.sample((size,))
-        return samples.to(self.device), rate
+    def sample(self, sample_shape: torch.Size = torch.Size([])):
+        dist = torch.distributions.exponential.Exponential(self.params)
+        return dist.sample(sample_shape).to(self.device)
 
-    def mvd_sample(self, raw_params, size):
-        rate = self._as_rate(raw_params)
-        pos_samples = self.__sample_exponential(size, rate)
-        neg_samples = self.__sample_negative(size, rate)
+    def rsample(self, sample_shape: torch.Size = torch.Size([])):
+        dist = torch.distributions.exponential.Exponential(self.params)
+        return dist.rsample(sample_shape).to(self.device)
+
+    def mvd_sample(self, size):
+        pos_samples = self.__sample_exponential(size, self.params)
+        neg_samples = self.__sample_negative(size, self.params)
         samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
-        return samples + rate
+        return samples + self.params
 
-    def mvd_backward(self, raw_params, losses, retain_graph):
-        rate = self._as_rate(raw_params)
+    def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():
             pos_losses, neg_losses = losses.mean(dim=0)
-            grad = (1. / rate) * (pos_losses - neg_losses)
-        assert grad.shape == rate.shape, f"Grad shape {grad.shape} != params shape {rate.shape}"
-        rate.backward(gradient=grad, retain_graph=retain_graph)
-        return grad
+            grad = (1. / self.params) * (pos_losses - neg_losses)
+        assert grad.shape == self.params.shape, f"Grad shape {grad.shape} != params shape {self.params.shape}"
+        self.params.backward(gradient=grad, retain_graph=retain_graph)
 
-    def kl(self, raw_params):
-        params = self._as_rate(raw_params)
-        return (params - torch.log(params) - 1).sum(dim=1)
+    def kl(self):
+        return (self.params - torch.log(self.params) - 1).sum(dim=1)
 
-    def log_prob(self, raw_params, samples):
-        params = self._as_rate(raw_params)
-        return torch.distributions.Exponential(params).log_prob(samples).sum(dim=-1)
-
-    @staticmethod
-    def _as_rate(raw_params):
-        return torch.exp(raw_params)
+    def log_prob(self, value):
+        return torch.distributions.Exponential(self.params).log_prob(value).sum(dim=-1)
 
     def __sample_exponential(self, sample_size, rate):
         return torch.distributions.exponential.Exponential(rate).sample((sample_size,)).to(self.device)

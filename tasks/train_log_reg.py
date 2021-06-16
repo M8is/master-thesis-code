@@ -7,13 +7,11 @@ from utils.trainer import Trainer
 
 
 class TrainLogReg(Trainer):
-    def __init__(self, sample_size, learning_rate, *args, **kwargs):
+    def __init__(self, learning_rate, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        estimator_tag = kwargs['mc_estimator']
-        distribution_tag = kwargs['distribution']
-        n_features = self.data_holder.dims[-1]
-        estimator = get_estimator(estimator_tag, distribution_tag, sample_size, self.device, n_features, **kwargs)
-        self.__model = models.logistic_regression.LinearLogisticRegression(sum(estimator.param_dims), estimator).to(self.device)
+        latent_dim = self.data_holder.dims[-1]
+        estimator = get_estimator(latent_dim=latent_dim, *args, **kwargs)
+        self.__model = models.logistic_regression.LinearLogisticRegression(latent_dim, estimator).to(self.device)
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property

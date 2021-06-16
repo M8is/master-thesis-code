@@ -21,35 +21,27 @@ distributions = {
 }
 
 
-def get_estimator(estimator_tag: str, distribution_tag: str, sample_size: int, device: str, latent_dim: int, *args,
-                  **kwargs):
+def get_estimator(mc_estimator: str, distribution: str, *args, **kwargs):
     """ Create a new estimator
 
-    :param estimator_tag: How the gradient will be estimated. Check `estimators.keys()` for valid values.
-    :param distribution_tag: Which distribution to use. Check `distributions.keys()` for valid values.
-                             Note: Some estimator/distribution combinations do NOT WORK, even if there are no errors.
-    :param sample_size: Number of MC samples used by the returned estimator
-    :param device: Device on which to put created tensors
-    :param latent_dim: Output size of the probabilistic layer.
+    :param mc_estimator: How the gradient will be estimated. Check `estimators.keys()` for valid values.
+    :param distribution: Which distribution to use. Check `distributions.keys()` for valid values.
     :param args: Additional args for the algorithm
     :param kwargs: Additional kwargs for the algorithm
     :return: Estimator instance
     """
-    estimator_tag = estimator_tag.lower()
-    distribution_tag = distribution_tag.lower()
-    if estimator_tag not in estimators:
-        raise ValueError(f'Algorithm {estimator_tag} not available.')
+    mc_estimator = mc_estimator.lower()
+    distribution = distribution.lower()
+    if mc_estimator not in estimators:
+        raise ValueError(f'Algorithm {mc_estimator} not available.')
 
-    if distribution_tag == 'gaussianmixture':
+    if distribution == 'gaussianmixture':
         selector_tag = kwargs['selector_estimator'].lower()
-        n_components = kwargs['n_components']
-        selector = estimators[selector_tag](distributions['categorical'](n_components, device), 1, **kwargs)
-        component = estimators[estimator_tag](distributions['multivariatenormal'](latent_dim, device), sample_size,
-                                              device, **kwargs)
+        selector = estimators[selector_tag](distributions['categorical'], 1, **kwargs)
+        component = estimators[mc_estimator](distributions['multivariatenormal'], **kwargs)
         return DiscreteMixture(selector, component, *args, **kwargs)
     else:
-        estimator = estimators[estimator_tag]
-        if distribution_tag not in distributions:
-            raise ValueError(f'Distribution {distribution_tag} not available for estimator {estimator_tag}.')
-        distribution = distributions[distribution_tag](latent_dim, device)
-        return estimator(distribution, sample_size, *args, **kwargs)
+        estimator = estimators[mc_estimator]
+        if distribution not in distributions:
+            raise ValueError(f'Distribution {distribution} not available for estimator {mc_estimator}.')
+        return estimator(distribution_type=distributions[distribution], *args, **kwargs)

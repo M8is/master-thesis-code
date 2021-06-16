@@ -3,28 +3,21 @@ from .exponential import Exponential
 
 
 class Poisson(Exponential):
-    def _get_param_dims(self, output_dim):
-        raise NotImplemented
+    def sample(self, sample_shape: torch.Size = torch.Size([])):
+        dist = torch.distributions.poisson.Poisson(self.params)
+        return dist.sample(sample_shape).to(self.device)
 
-    def sample(self, raw_params, size=1, with_grad=False):
-        if with_grad:
-            raise ValueError("Poisson cannot be reparameterized.")
-        else:
-            params = self._as_rate(raw_params)
-            dist = torch.distributions.poisson.Poisson(params)
-            return dist.sample((size,)).to(self.device), params
+    def rsample(self, sample_shape: torch.Size = torch.Size([])):
+        raise ValueError("Poisson cannot be reparameterized.")
 
-    def mvd_sample(self, raw_params, size):
-        rate = self._as_rate(raw_params)
+    def mvd_sample(self, size):
         with torch.no_grad():
-            pos_samples = self.__sample_poisson(size, rate + 1.)
-            neg_samples = self.__sample_poisson(size, rate)
-            samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
-            return samples + rate
+            pos_samples = self.__sample_poisson(size, self.params + 1.)
+            neg_samples = self.__sample_poisson(size, self.params)
+            return torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
 
-    def log_prob(self, raw_params, samples):
-        rate = self._as_rate(raw_params)
-        return torch.distributions.Poisson(rate).log_prob(samples).sum(dim=-1).to(self.device)
+    def log_prob(self, value):
+        return torch.distributions.Poisson(self.params).log_prob(value).sum(dim=-1).to(self.device)
 
     def __sample_poisson(self, sample_size, rate):
         return torch.distributions.poisson.Poisson(rate).sample((sample_size,)).to(self.device)

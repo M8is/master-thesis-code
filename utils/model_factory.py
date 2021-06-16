@@ -9,19 +9,21 @@ vaes = {
 }
 
 
-def get_vae(architecture_tag: str, estimator: MCEstimator, data_dims: List[int], hidden_dims: List[int]):
+def get_vae(vae_type: str, estimator: MCEstimator, data_dims: List[int], hidden_dims: List[int], latent_dim: int, *_,
+            **__):
     """ Instantiate a new VAE
 
-    :param architecture_tag: Which VAE architecture to use. Check `vaes.keys()` for valid values.
+    :param vae_type: Which VAE architecture to use. Check `vaes.keys()` for valid values.
     :param estimator: MC estimator for the probabilistic layer
     :param data_dims: Input size
     :param hidden_dims: List of hidden dimensions the model should use (mirrored in decoder)
+    :param latent_dim: Size of the latent dimension
     :return: Model instance
     """
-    architecture_tag = architecture_tag.lower()
-    if architecture_tag not in vaes:
-        raise ValueError(f'Model {architecture_tag} not available.')
-    encoder, decoder = vaes[architecture_tag]
-    return vae.VAE(encoder(data_dims, hidden_dims, sum(estimator.param_dims)),
-                   decoder(estimator.distribution.latent_dim, hidden_dims[::-1], data_dims),
+    vae_type = vae_type.lower()
+    if vae_type not in vaes:
+        raise ValueError(f'Model {vae_type} not available.')
+    encoder, decoder = vaes[vae_type]
+    return vae.VAE(encoder(data_dims, hidden_dims, estimator.distribution_type.param_dims(latent_dim)),
+                   decoder(latent_dim, hidden_dims[::-1], data_dims),
                    estimator)

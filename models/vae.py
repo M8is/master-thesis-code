@@ -14,12 +14,12 @@ class VAE(torch.nn.Module):
 
     def forward(self, x):
         raw_params = self.encoder(x)
-        samples = self.probabilistic(raw_params)
-        return raw_params, self.decoder(samples)
+        distribution, samples = self.probabilistic(raw_params)
+        return distribution, self.decoder(samples)
 
 
 class FCEncoder(nn.Module):
-    def __init__(self, input_shape, hidden_dims, output_size):
+    def __init__(self, input_shape, hidden_dims, output_sizes):
         super().__init__()
         self.input_shape = input_shape
         self.layers = nn.ModuleList([])
@@ -31,7 +31,7 @@ class FCEncoder(nn.Module):
                     nn.LeakyReLU())
             )
             in_features = h_dim
-        self.output_layer = nn.Linear(in_features, output_size)
+        self.output_layer = nn.Linear(in_features, sum(output_sizes))
 
     def forward(self, x):
         x = x.flatten(start_dim=-len(self.input_shape))

@@ -2,15 +2,16 @@ import torch
 
 
 class LinearLogisticRegression(torch.nn.Module):
-    def __init__(self, params_size, probabilistic):
+    def __init__(self, latent_dim, probabilistic):
         super().__init__()
-        self.raw_params = torch.nn.Parameter(torch.randn((1, params_size)))
+        param_dims = probabilistic.distribution_type.param_dims(latent_dim)
+        self.raw_params = torch.nn.Parameter(torch.randn((1, sum(param_dims))))
         self.probabilistic = probabilistic
 
     def forward(self, x):
         raw_params = self.raw_params.repeat_interleave(x.size(0), dim=0)
-        samples = self.probabilistic(raw_params)
-        return raw_params, self.predict(samples, x)
+        distribution, samples = self.probabilistic(raw_params)
+        return distribution, self.predict(samples, x)
 
     @staticmethod
     def predict(samples, x):

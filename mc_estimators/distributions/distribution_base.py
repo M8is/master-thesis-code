@@ -1,42 +1,47 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-from torch import Tensor
+import torch
 
 
 class Distribution(ABC):
-    def __init__(self, output_size, device):
-        self.param_dims = self._get_param_dims(output_size)
-        self.latent_dim = output_size
+    def __init__(self, raw_params, device):
+        self.params = self._as_params(raw_params)
         self.device = device
-        self.retain_grad = False
 
-    def retain_grad(self):
-        self.retain_grad = True
-
-    @abstractmethod
-    def _get_param_dims(self, output_dim):
-        pass
+    @staticmethod
+    def param_dims(latent_dim: int) -> Tuple[int, ...]:
+        return latent_dim,
 
     @abstractmethod
-    def mvd_backward(self, raw_params, losses, retain_graph) -> Tensor:
+    def _as_params(self, raw_params):
         pass
 
+    @property
     @abstractmethod
-    def sample(self, raw_params, size=1, with_grad=False) -> Tuple[Tensor, Tensor]:
+    def kl(self):
         pass
 
-    @abstractmethod
-    def mvd_sample(self, raw_params, size):
-        pass
-
-    @abstractmethod
-    def kl(self, raw_params):
-        pass
-
-    @abstractmethod
-    def log_prob(self, raw_params, samples):
-        pass
-
-    def pdf(self, raw_params):
+    @property
+    def pdf(self):
         raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")
+
+    @abstractmethod
+    def mvd_backward(self, losses, retain_graph) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def sample(self, sample_shape: torch.Size = torch.Size([])) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def rsample(self, sample_shape: torch.Size = torch.Size([])) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def mvd_sample(self, size: int) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        pass
