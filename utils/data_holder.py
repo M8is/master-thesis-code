@@ -31,11 +31,10 @@ class DataHolder(ABC):
         pass
 
     @staticmethod
-    def get(dataset_tag: str, *args, **kwargs) -> 'DataHolder':
-        if dataset_tag.lower() not in DataHolder._datasets:
-            raise ValueError(f'Invalid dataset `{dataset_tag}`. Allowed values: {list(DataHolder._datasets.keys())}.')
-        dataset = DataHolder._datasets[dataset_tag.lower()]
-        return dataset(*args, **kwargs)
+    def get(dataset: str, *args, **kwargs) -> 'DataHolder':
+        if dataset.lower() not in DataHolder._datasets:
+            raise ValueError(f'Invalid dataset `{dataset}`. Allowed values: {list(DataHolder._datasets.keys())}.')
+        return DataHolder._datasets[dataset.lower()](*args, **kwargs)
 
     @staticmethod
     def register_dataset(key: str):
@@ -43,8 +42,9 @@ class DataHolder(ABC):
             DataHolder._datasets[key] = cls
         return __reg
 
+    @staticmethod
     @abstractmethod
-    def load(self, batch_size, *args, **kwargs):
+    def load(batch_size, *args, **kwargs):
         pass
 
 
@@ -54,7 +54,8 @@ class MNIST(DataHolder):
     def dims(self):
         return 1, 28, 28
 
-    def load(self, batch_size, *args, **kwargs):
+    @staticmethod
+    def load(batch_size, *args, **kwargs):
         loader_args = dict()
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
@@ -62,10 +63,10 @@ class MNIST(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.MNIST(root=self.DATA_ROOT, train=True, download=True, transform=transforms.ToTensor()),
+            datasets.MNIST(root=DataHolder.DATA_ROOT, train=True, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.MNIST(root=self.DATA_ROOT, train=False, download=True, transform=transforms.ToTensor()),
+            datasets.MNIST(root=DataHolder.DATA_ROOT, train=False, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
@@ -76,7 +77,8 @@ class Omniglot(DataHolder):
     def dims(self):
         return 1, 105, 105
 
-    def load(self, batch_size, *args, **kwargs):
+    @staticmethod
+    def load(batch_size, *args, **kwargs):
         loader_args = dict()
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
@@ -84,10 +86,10 @@ class Omniglot(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.Omniglot(root=self.DATA_ROOT, background=True, download=True, transform=transforms.ToTensor()),
+            datasets.Omniglot(root=DataHolder.DATA_ROOT, background=True, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.Omniglot(root=self.DATA_ROOT, background=False, download=True, transform=transforms.ToTensor()),
+            datasets.Omniglot(root=DataHolder.DATA_ROOT, background=False, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
@@ -98,7 +100,8 @@ class SteetViewHouseNumbers(DataHolder):
     def dims(self):
         return 1, 32, 32
 
-    def load(self, batch_size, *args, **kwargs):
+    @staticmethod
+    def load(batch_size, *args, **kwargs):
         loader_args = dict()
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
@@ -106,10 +109,10 @@ class SteetViewHouseNumbers(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.SVHN(root=self.DATA_ROOT, split='train', download=True, transform=transforms.ToTensor()),
+            datasets.SVHN(root=DataHolder.DATA_ROOT, split='train', download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.SVHN(root=self.DATA_ROOT, split='test', download=True, transform=transforms.ToTensor()),
+            datasets.SVHN(root=DataHolder.DATA_ROOT, split='test', download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
@@ -120,7 +123,8 @@ class CelebA(DataHolder):
     def dims(self):
         return 3, 64, 64
 
-    def load(self, batch_size, *args, **kwargs):
+    @staticmethod
+    def load(batch_size, *args, **kwargs):
         loader_args = dict()
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
@@ -128,10 +132,10 @@ class CelebA(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.CelebA(root=self.DATA_ROOT, split='train', download=True, transform=transforms.ToTensor()),
+            datasets.CelebA(root=DataHolder.DATA_ROOT, split='train', download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.CelebA(root=self.DATA_ROOT, split='test', download=True, transform=transforms.ToTensor()),
+            datasets.CelebA(root=DataHolder.DATA_ROOT, split='test', download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
@@ -142,7 +146,8 @@ class FashionMNIST(DataHolder):
     def dims(self):
         return 3, 1, 1  # TODO
 
-    def load(self, batch_size, *args, **kwargs):
+    @staticmethod
+    def load(batch_size, *args, **kwargs):
         loader_args = dict()
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
@@ -150,10 +155,10 @@ class FashionMNIST(DataHolder):
             loader_args['num_workers'] = kwargs['num_workers']
 
         train_holder = DataLoader(
-            datasets.FashionMNIST(root=self.DATA_ROOT, train=True, download=True, transform=transforms.ToTensor()),
+            datasets.FashionMNIST(root=DataHolder.DATA_ROOT, train=True, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         test_holder = DataLoader(
-            datasets.FashionMNIST(root=self.DATA_ROOT, train=False, download=True, transform=transforms.ToTensor()),
+            datasets.FashionMNIST(root=DataHolder.DATA_ROOT, train=False, download=True, transform=transforms.ToTensor()),
             shuffle=True, batch_size=batch_size, **loader_args)
         return lambda: train_holder, lambda: test_holder
 
@@ -164,7 +169,8 @@ class BreastCancer(DataHolder):
     def dims(self):
         return 30,
 
-    def load(self, batch_size, *_, **__):
+    @staticmethod
+    def load(batch_size, *_, **__):
         x, y = sklearn.datasets.load_breast_cancer(return_X_y=True)
         # TODO: save/load in self.DATA_ROOT
         x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in

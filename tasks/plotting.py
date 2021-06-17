@@ -4,10 +4,9 @@ from os import path, makedirs
 
 
 def plot_losses(plot_dir, losses_per_task):
-    for task, configs_and_losses in losses_per_task.items():
-        if not path.exists(plot_dir):
-            makedirs(plot_dir)
+    makedirs(plot_dir, exist_ok=True)
 
+    for task, configs_and_losses in losses_per_task.items():
         print(f"Plotting losses for task '{task}' in '{plot_dir}' ...")
         dataset = '<unnamed dataset>'
         for config, losses in configs_and_losses.values():
@@ -35,10 +34,9 @@ def plot_losses(plot_dir, losses_per_task):
 
 
 def plot_estimator_variances(plot_dir, stds_per_task):
-    for task, configs_and_losses in stds_per_task.items():
-        if not path.exists(plot_dir):
-            makedirs(plot_dir)
+    makedirs(plot_dir, exist_ok=True)
 
+    for task, configs_and_losses in stds_per_task.items():
         print(f"Plotting variances for task '{task}' in '{plot_dir}' ...")
         dataset = '<unnamed dataset>'
         plt.yscale('log')
@@ -52,6 +50,19 @@ def plot_estimator_variances(plot_dir, stds_per_task):
         plt.title(f"{dataset} estimator variances")
         plt.savefig(path.join(plot_dir, 'variances.png'))
         plt.clf()
+
+
+def plot_estimator_performances(plot_dir, times_per_task):
+    for task, configs_and_losses in times_per_task.items():
+        print(f"Writing out performances for task '{task}' in '{plot_dir}' ...")
+        makedirs(plot_dir, exist_ok=True)
+        with open(path.join(plot_dir, 'times_ns.yaml'), 'w+') as f:
+            for config, performance in configs_and_losses.values():
+                performance = np.array(performance).mean(axis=0)
+                mean_perf, std_perf = performance
+                print(f'{config["mc_estimator"]}:', file=f)
+                print(f'  mean: {mean_perf}', file=f)
+                print(f'  std: {std_perf}', file=f)
 
 
 def __plot(means, stds, plot_label=None, **_):

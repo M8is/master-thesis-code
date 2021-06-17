@@ -19,6 +19,7 @@ runs:
   - mc_estimator: 'reinforce'
     plot_label: 'Reinforce 10 samples'
     sample_size: 10
+    compute_perf: True
   - mc_estimator: 'Reinforce'
     plot_label: 'Reinforce 80 samples'
     sample_size: 80
@@ -27,9 +28,11 @@ runs:
     plot_label: 'MVD 1 sample'
     sample_size: 1
     compute_variance: True
+    compute_perf: True
   - mc_estimator: 'pathwise'
     plot_label: 'Pathwise 1 sample'
     sample_size: 1
+    compute_perf: True
   - mc_estimator: 'Pathwise'
     plot_label: 'Pathwise 80 samples'
     sample_size: 80

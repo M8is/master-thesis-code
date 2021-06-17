@@ -1,54 +1,63 @@
+import time
 from abc import ABC, abstractmethod
 from os import path
-from typing import Tuple, Optional
+from typing import Tuple, Callable
 
 import torch
 import torch.utils.data
 
+from mc_estimators.distributions.distribution_base import Distribution
 from utils.data_holder import DataHolder
 from utils.eval_util import eval_mode
 from utils.tensor_holders import LossHolder, TensorHolder
 
 
 class Trainer(ABC):
-    def __init__(self, results_dir: str, dataset: str, device: str, epochs: int, batch_size: int, mc_estimator: str,
-                 compute_variance: bool = False, **kwargs):
+    def __init__(self, results_dir: str, device: str, epochs: int, mc_estimator: str, compute_variance: bool = False,
+                 compute_perf: bool = False, print_interval: int = 100, **kwargs):
         self.results_dir = results_dir
         self.device = device
         self.epochs = epochs
-        self.data_holder = DataHolder.get(dataset, batch_size)
+        self.data_holder = DataHolder.get(**kwargs)
         self.estimator = mc_estimator
         self.compute_variance = compute_variance
+        self.compute_perf = compute_perf
+        self.print_interval = print_interval
 
-        self.train_losses = LossHolder(self.results_dir, train=True)
-        self.test_losses = LossHolder(self.results_dir, train=False)
-        self.estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
+    def train(self) -> Tuple[LossHolder, LossHolder, TensorHolder, TensorHolder]:
+        train_losses = LossHolder(self.results_dir, train=True)
+        test_losses = LossHolder(self.results_dir, train=False)
+        estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
+        estimator_times = TensorHolder(self.results_dir, 'estimator_times')
 
-    def train(self) -> Tuple[LossHolder, LossHolder, TensorHolder]:
         print(f'Training with {self.estimator}.')
         for epoch in range(1, self.epochs + 1):
-            train_loss, test_loss, est_std = self.__train_epoch()
-            self.train_losses.add(train_loss)
-            self.test_losses.add(test_loss)
-            if self.compute_variance:
-                self.estimator_stds.add(est_std)
-                self.estimator_stds.save()
-            file_name = path.join(self.results_dir, f'{self.estimator}_{epoch}.pt')
-            self.train_losses.save()
-            self.test_losses.save()
-            torch.save(self.model, file_name)
-            print(f"Epoch: {epoch}/{self.epochs}, Train loss: {self.train_losses.numpy()[-1].mean():.2f}, "
-                  f"Test loss: {self.test_losses.numpy()[-1].mean():.2f}",
+            train_loss, est_std = self.__train_epoch()
+            test_loss = self.__test_epoch()
+            train_losses.add(train_loss)
+            test_losses.add(test_loss)
+            if est_std.numel():
+                estimator_stds.add(est_std)
+            print(f"Epoch: {epoch}/{self.epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
+                  f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
                   flush=True)
-        self.post_training()
-        return self.train_losses, self.test_losses, self.estimator_stds
+            print(60 * "-")
+        if self.compute_perf:
+            print(f'Estimating performance of {self.estimator} ...')
+            estimator_times.add(self.__estimate_time(n_estimates=10000))
 
-    def __train_epoch(self) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
-        train_losses = []
-        test_losses = []
-        estimator_stds = []
+        train_losses.save()
+        test_losses.save()
+        estimator_times.save()
+        estimator_stds.save()
+        torch.save(self.model, path.join(self.results_dir, f'{self.estimator}_{self.epochs}.pt'))
+        self.post_training()
+        return train_losses, test_losses, estimator_stds, estimator_times
+
+    def __train_epoch(self) -> Tuple[torch.Tensor, torch.Tensor]:
         self.model.train()
-        print(60 * "-")
+        train_losses = []
+        estimator_stds = []
         for batch_id, (x_batch, _) in enumerate(self.data_holder.train):
             x_batch = x_batch.to(self.device)
             distribution, x_recon = self.model(x_batch)
@@ -63,16 +72,13 @@ class Trainer(ABC):
             self.model.probabilistic.backward(distribution, loss_fn)
             loss.backward()
             self.optimizer.step()
-            if batch_id % 100 == 0:
+            if batch_id % self.print_interval == 0:
                 print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
             if self.compute_variance and batch_id % self.variance_interval == 0:
                 distribution, _ = self.model(x_batch)
-                estimator_stds.append(self.model.probabilistic.get_std(distribution, self.optimizer.zero_grad, loss_fn))
-
+                estimator_stds.append(self.__estimate_std(distribution, loss_fn, n_estimates=500))
             train_losses.append(loss + kld)
-        test_losses.append(self.__test_epoch())
-        return torch.stack(train_losses), torch.stack(test_losses), torch.stack(
-            estimator_stds) if estimator_stds else None
+        return torch.tensor(train_losses), torch.tensor(estimator_stds)
 
     def __test_epoch(self) -> torch.Tensor:
         with eval_mode(self.model):
@@ -84,6 +90,45 @@ class Trainer(ABC):
                 kld = distribution.kl().mean()
                 test_losses.append(loss + kld)
             return torch.tensor(test_losses).mean()
+
+    def __estimate_std(self, distribution: Distribution, loss_fn: Callable[[torch.Tensor], torch.Tensor],
+                       n_estimates: int) -> torch.Tensor:
+        old_sample_size = self.model.probabilistic.sample_size
+        self.model.probabilistic.sample_size = 1
+        grads = []
+        self.optimizer.zero_grad()
+        for i in range(n_estimates):
+            distribution.params.retain_grad()
+            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=(i + 1) < n_estimates)
+            grads.append(distribution.params.grad)
+            self.optimizer.zero_grad()
+        self.model.probabilistic.sample_size = old_sample_size
+        return torch.stack(grads).std(dim=0).mean()
+
+    def __estimate_time(self, n_estimates: int) -> torch.Tensor:
+        self.model.train()
+        x_batch = None
+        for (b, _) in self.data_holder.train:
+            x_batch = b.to(self.device)
+        distribution, _ = self.model(x_batch)
+
+        def loss_fn(samples):
+            return self.loss(x_batch, self.model.decoder(samples))
+
+        old_sample_size = self.model.probabilistic.sample_size
+        self.model.probabilistic.sample_size = 1
+        times = []
+        self.optimizer.zero_grad()
+        for i in range(n_estimates):
+            retain_graph = (i + 1) < n_estimates
+            before = time.process_time_ns()
+            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=retain_graph)
+            after = time.process_time_ns()
+            times.append(after - before)
+            self.optimizer.zero_grad()
+        self.model.probabilistic.sample_size = old_sample_size
+        times = torch.FloatTensor(times)
+        return torch.stack((times.mean(), times.std()))
 
     @property
     def variance_interval(self) -> int:
