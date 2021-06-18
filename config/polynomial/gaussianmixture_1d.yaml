@@ -14,7 +14,7 @@ init_params:
   - 0.1
   - 2.0
   - 0.1
-epochs: 500
+iterations: 500
 learning_rate: 0.001
 device: 'cuda'
 runs:

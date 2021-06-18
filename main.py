@@ -10,7 +10,7 @@ from tasks.train_log_reg import TrainLogReg
 from tasks.train_polynomial import train_polynomial
 from tasks.train_vae import TrainVAE
 from utils.clean import clean
-from utils.tensor_holders import LossHolder, TensorHolder
+from utils.tensor_holders import TensorHolder
 from utils.seeds import fix_random_seed
 
 
@@ -21,59 +21,60 @@ def main(args):
 
     results_base_dir = path.splitext(config_path)[0].replace('config', 'results', 1)
 
-    losses_per_task = {}
-    stds_per_task = {}
-    times_per_task = {}
-    if 'runs' in meta_config:
-        configs = [{**meta_config, **run_config} for run_config in meta_config['runs']]
-    else:
-        configs = [meta_config]
+    # Update meta config with run configs, or run meta config as-is, if no runs are defined.
+    configs = [{**meta_config, **run_config} for run_config in meta_config.get('runs', [{}])]
 
+    # ========== Run trainings ==========
     for config in configs:
         config_subpath = path.join(config['mc_estimator'], str(config['sample_size']))
         for seed in config['seeds']:
             results_dir = path.join(results_base_dir, config_subpath, str(seed))
             config['results_dir'] = results_dir
+            makedirs(results_dir, exist_ok=True)
 
-            dev = 'cpu'
-            if 'device' in config and torch.cuda.is_available():
-                dev = config['device']
-            config['device'] = torch.device(dev)
+            # Replace device string with device class
+            config['device'] = torch.device(config.get('device', 'cpu'))
 
             if args.clean:
                 clean(**config)
 
             task = config.get('task')
-            train_loss = LossHolder(results_dir, train=True)
-            if not train_loss.is_empty():
+            if not TensorHolder(results_dir, 'train_loss').is_empty():
                 print(f"Skipping training; Loading existing results from '{results_dir}'...")
-                test_loss = LossHolder(results_dir, train=False)
-                estimator_stds = TensorHolder(results_dir, 'estimator_stds')
-                estimator_times = TensorHolder(results_dir, 'estimator_times')
             else:
-                makedirs(results_dir, exist_ok=True)
-
                 fix_random_seed(seed)
                 if task == 'vae':
-                    train_loss, test_loss, estimator_stds, estimator_times = TrainVAE(**config).train()
+                    TrainVAE(**config).train()
                 elif task == 'logreg':
-                    train_loss, test_loss, estimator_stds, estimator_times = TrainLogReg(**config).train()
+                    TrainLogReg(**config).train()
                 elif task == 'polynomial':
-                    train_loss, test_loss = train_polynomial(**config)
-                    # TODO: Remove once train_polynomial is based on Trainer class.
-                    estimator_stds = TensorHolder(results_dir, 'estimator_stds')
-                    estimator_times = TensorHolder(results_dir, 'estimator_times')
+                    train_polynomial(**config)
                 else:
                     raise ValueError(f"Unknown task '{task}'.")
 
-            if task not in losses_per_task:
-                losses_per_task[task] = dict()
+    # ========== Collect results ==========
+    losses_per_task = {}
+    stds_per_task = {}
+    times_per_task = {}
+    for config in configs:
+        config_subpath = path.join(config['mc_estimator'], str(config['sample_size']))
+        for seed in config['seeds']:
+            results_dir = path.join(results_base_dir, config_subpath, str(seed))
+            config['results_dir'] = results_dir
+            task = config.get('task')
 
-            if config_subpath not in losses_per_task[task]:
-                losses_per_task[task][config_subpath] = config, [(train_loss.numpy(), test_loss.numpy())]
-            else:
-                losses_per_task[task][config_subpath][1].append((train_loss.numpy(), test_loss.numpy()))
+            train_loss = TensorHolder(results_dir, 'train_loss')
+            test_loss = TensorHolder(results_dir, 'test_loss')
+            if not train_loss.is_empty() and not test_loss.is_empty():
+                if task not in losses_per_task:
+                    losses_per_task[task] = dict()
 
+                if config_subpath not in losses_per_task[task]:
+                    losses_per_task[task][config_subpath] = config, [(train_loss.numpy(), test_loss.numpy())]
+                else:
+                    losses_per_task[task][config_subpath][1].append((train_loss.numpy(), test_loss.numpy()))
+
+            estimator_stds = TensorHolder(results_dir, 'estimator_stds')
             if not estimator_stds.is_empty():
                 if task not in stds_per_task:
                     stds_per_task[task] = dict()
@@ -83,6 +84,7 @@ def main(args):
                 else:
                     stds_per_task[task][config_subpath][1].append(estimator_stds.numpy())
 
+            estimator_times = TensorHolder(results_dir, 'estimator_times')
             if not estimator_times.is_empty():
                 if task not in times_per_task:
                     times_per_task[task] = dict()
@@ -97,6 +99,7 @@ def main(args):
         makedirs(results_base_dir, exist_ok=True)
         copyfile(config_path, config_results_path)
 
+    # ========== Plot results ==========
     plot_losses(results_base_dir, losses_per_task)
     plot_estimator_variances(results_base_dir, stds_per_task)
     plot_estimator_performances(results_base_dir, times_per_task)

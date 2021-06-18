@@ -31,6 +31,3 @@ class TrainLogReg(Trainer):
         # Use no reduction to get separate losses for each image
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(y_pred, y.expand_as(y_pred))
-
-    def post_training(self):
-        pass

@@ -9,7 +9,7 @@ import torch.utils.data
 from mc_estimators.distributions.distribution_base import Distribution
 from utils.data_holder import DataHolder
 from utils.eval_util import eval_mode
-from utils.tensor_holders import LossHolder, TensorHolder
+from utils.tensor_holders import TensorHolder
 
 
 class Trainer(ABC):
@@ -24,9 +24,9 @@ class Trainer(ABC):
         self.compute_perf = compute_perf
         self.print_interval = print_interval
 
-    def train(self) -> Tuple[LossHolder, LossHolder, TensorHolder, TensorHolder]:
-        train_losses = LossHolder(self.results_dir, train=True)
-        test_losses = LossHolder(self.results_dir, train=False)
+    def train(self):
+        train_losses = TensorHolder(self.results_dir, 'train_loss')
+        test_losses = TensorHolder(self.results_dir, 'test_loss')
         estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
         estimator_times = TensorHolder(self.results_dir, 'estimator_times')
 
@@ -52,7 +52,6 @@ class Trainer(ABC):
         estimator_stds.save()
         torch.save(self.model, path.join(self.results_dir, f'{self.estimator}_{self.epochs}.pt'))
         self.post_training()
-        return train_losses, test_losses, estimator_stds, estimator_times
 
     def __train_epoch(self) -> Tuple[torch.Tensor, torch.Tensor]:
         self.model.train()
@@ -146,6 +145,5 @@ class Trainer(ABC):
     def loss(self, inputs: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         pass
 
-    @abstractmethod
     def post_training(self) -> None:
         pass

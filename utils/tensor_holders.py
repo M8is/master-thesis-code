@@ -30,8 +30,3 @@ class TensorHolder:
 
     def is_empty(self) -> bool:
         return len(self.data) == 0
-
-
-class LossHolder(TensorHolder):
-    def __init__(self, output_dir: str, train: bool):
-        super().__init__(output_dir, f"{'train' if train else 'test'}_loss")
