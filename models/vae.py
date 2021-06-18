@@ -67,7 +67,7 @@ class FCDecoder(nn.Module):
 
 
 class Conv2DEncoder(nn.Module):
-    def __init__(self, input_shape, hidden_dims, output_size):
+    def __init__(self, input_shape, hidden_dims, output_sizes):
         super().__init__()
 
         conv_kw = {
@@ -88,7 +88,7 @@ class Conv2DEncoder(nn.Module):
             in_channels = h_dim
             input_size = int(1 + (input_size + 2 * conv_kw['padding'] - conv_kw['kernel_size']) / conv_kw['stride'])
         self.model = nn.Sequential(*layers)
-        self.output_layer = nn.Linear(in_channels * input_size ** 2, output_size)
+        self.output_layer = nn.Linear(in_channels * input_size ** 2, sum(output_sizes))
 
     def forward(self, x):
         x = self.model(x)
