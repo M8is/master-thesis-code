@@ -98,8 +98,9 @@ class Trainer(ABC):
         grads = []
         self.optimizer.zero_grad()
         for i in range(n_estimates):
+            retain_graph = (i + 1) < n_estimates
             distribution.params.retain_grad()
-            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=(i + 1) < n_estimates)
+            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=retain_graph)
             grads.append(distribution.params.grad)
             self.optimizer.zero_grad()
         self.model.probabilistic.sample_size = old_sample_size
@@ -115,18 +116,15 @@ class Trainer(ABC):
         def loss_fn(samples):
             return self.loss(x_batch, self.model.decoder(samples))
 
-        old_sample_size = self.model.probabilistic.sample_size
-        self.model.probabilistic.sample_size = 1
         times = []
         self.optimizer.zero_grad()
         for i in range(n_estimates):
             retain_graph = (i + 1) < n_estimates
-            before = time.process_time_ns()
+            before = time.process_time()
             self.model.probabilistic.backward(distribution, loss_fn, retain_graph=retain_graph)
-            after = time.process_time_ns()
+            after = time.process_time()
             times.append(after - before)
             self.optimizer.zero_grad()
-        self.model.probabilistic.sample_size = old_sample_size
         times = torch.FloatTensor(times)
         return torch.stack((times.mean(), times.std()))
 
