@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 import numpy as np
 from matplotlib import pyplot as plt
 from os import path, makedirs
@@ -74,3 +76,9 @@ def __plot(means, stds, plot_label=None, **_):
 def __legend():
     legend = plt.legend()
     plt.setp(legend.get_lines(), linewidth=2)
+
+
+def __parse_label(config: Dict[str, Any], label: str):
+    for k, v in config:
+        label = label.replace(f'${k}$', str(v))
+    return label

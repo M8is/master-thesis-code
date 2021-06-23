@@ -25,9 +25,13 @@ def main(args):
     configs = [{**meta_config, **run_config} for run_config in meta_config.get('runs', [{}])]
 
     # ========== Run trainings ==========
-    for config in configs:
-        config_subpath = path.join(config['mc_estimator'], str(config['sample_size']))
-        for seed in config['seeds']:
+    for i, config in enumerate(configs):
+        print(f"====== Running configuration {i}/{len(configs)} ======")
+
+        config_subpath = path.join(*[str(config[key]) for key in config['subpath_keys']])
+        for j, seed in enumerate(config['seeds']):
+            print(f"=== Running seed {j}/{len(config['seeds'])} ===")
+
             results_dir = path.join(results_base_dir, config_subpath, str(seed))
             config['results_dir'] = results_dir
             makedirs(results_dir, exist_ok=True)
@@ -57,7 +61,7 @@ def main(args):
     stds_per_task = {}
     times_per_task = {}
     for config in configs:
-        config_subpath = path.join(config['mc_estimator'], str(config['sample_size']))
+        config_subpath = path.join(*[str(config[key]) for key in config['subpath_keys']])
         for seed in config['seeds']:
             results_dir = path.join(results_base_dir, config_subpath, str(seed))
             config['results_dir'] = results_dir

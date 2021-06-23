@@ -8,20 +8,19 @@ init_params:
   - -1
 iterations: 500
 learning_rate: 0.001
+plot_label: '$mc_estimator$ $sample_size$ sample(s)'
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
 device: 'cuda'
 runs:
-  - mc_estimator: 'reinforce'
-    plot_label: 'Reinforce 1 sample'
+  - mc_estimator: 'Reinforce'
     sample_size: 1
-  - mc_estimator: 'reinforce'
-    plot_label: 'Reinforce 2 samples'
+  - mc_estimator: 'Reinforce'
     sample_size: 2
-  - mc_estimator: 'mvd'
-    plot_label: 'MVD 1 sample'
+  - mc_estimator: 'MVD'
     sample_size: 1
-  - mc_estimator: 'pathwise'
-    plot_label: 'Pathwise 1 sample'
+  - mc_estimator: 'Pathwise'
     sample_size: 1
-  - mc_estimator: 'pathwise'
-    plot_label: 'Pathwise 2 samples'
+  - mc_estimator: 'Pathwise'
     sample_size: 2
