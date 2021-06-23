@@ -28,7 +28,7 @@ class TrainVAE(Trainer):
     def optimizer(self) -> torch.optim.Optimizer:
         return self.__optimizer
 
-    def loss(self, inputs: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
+    def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         x, x_recon = inputs, outputs
         n_data_dims = len(x.size()) - 1
         # Use no reduction to get separate losses for each image

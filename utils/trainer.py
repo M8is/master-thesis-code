@@ -57,16 +57,17 @@ class Trainer(ABC):
         self.model.train()
         train_losses = []
         estimator_stds = []
-        for batch_id, (x_batch, _) in enumerate(self.data_holder.train):
+        for batch_id, (x_batch, y_batch) in enumerate(self.data_holder.train):
             x_batch = x_batch.to(self.device)
-            distribution, x_recon = self.model(x_batch)
-            loss = self.loss(x_batch, x_recon).mean()
+            y_batch = y_batch.to(self.device)
+            distribution, out = self.model(x_batch)
+            loss = self.loss(x_batch, y_batch, out).mean()
             kld = distribution.kl().mean()
             self.optimizer.zero_grad()
             kld.backward(retain_graph=True)
 
             def loss_fn(samples):
-                return self.loss(x_batch, self.model.decoder(samples))
+                return self.loss(x_batch, y_batch, self.model.decoder(samples))
 
             self.model.probabilistic.backward(distribution, loss_fn)
             loss.backward()
@@ -82,10 +83,11 @@ class Trainer(ABC):
     def __test_epoch(self) -> torch.Tensor:
         with eval_mode(self.model):
             test_losses = []
-            for x_batch, _ in self.data_holder.test:
+            for x_batch, y_batch in self.data_holder.test:
                 x_batch = x_batch.to(self.device)
+                y_batch = y_batch.to(self.device)
                 distribution, x_recons = self.model(x_batch)
-                loss = self.loss(x_batch, x_recons).mean()
+                loss = self.loss(x_batch, y_batch, x_recons).mean()
                 kld = distribution.kl().mean()
                 test_losses.append(loss + kld)
             return torch.tensor(test_losses).mean()
@@ -108,12 +110,13 @@ class Trainer(ABC):
     def __estimate_time(self, n_estimates: int) -> torch.Tensor:
         self.model.train()
         x_batch = None
-        for (b, _) in self.data_holder.train:
+        for (b, y) in self.data_holder.train:
             x_batch = b.to(self.device)
+            y_batch = y.to(self.device)
         distribution, _ = self.model(x_batch)
 
         def loss_fn(samples):
-            return self.loss(x_batch, self.model.decoder(samples))
+            return self.loss(x_batch, y_batch, self.model.decoder(samples))
 
         times = []
         self.optimizer.zero_grad()
@@ -142,7 +145,7 @@ class Trainer(ABC):
         pass
 
     @abstractmethod
-    def loss(self, inputs: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
+    def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         pass
 
     def post_training(self) -> None:

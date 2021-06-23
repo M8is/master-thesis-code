@@ -7,7 +7,7 @@ from utils.trainer import Trainer
 
 
 class TrainLogReg(Trainer):
-    def __init__(self, learning_rate, *args, **kwargs):
+    def __init__(self, learning_rate: float, *args, **kwargs):
         super().__init__(*args, **kwargs)
         latent_dim = self.data_holder.dims[-1]
         estimator = get_estimator(latent_dim=latent_dim, *args, **kwargs)
@@ -15,19 +15,19 @@ class TrainLogReg(Trainer):
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property
-    def variance_interval(self):
+    def variance_interval(self) -> int:
         return 5
 
     @property
-    def model(self):
+    def model(self) -> torch.nn.Module:
         return self.__model
 
     @property
-    def optimizer(self):
+    def optimizer(self) -> torch.optim.Optimizer:
         return self.__optimizer
 
-    def loss(self, inputs, outputs):
-        y, y_pred = inputs, outputs
+    def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
+        y, y_pred = labels.double(), outputs
         # Use no reduction to get separate losses for each image
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(y_pred, y.expand_as(y_pred))
