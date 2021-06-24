@@ -1,8 +1,74 @@
+import argparse
+from pathlib import Path
 from typing import Dict, Any
 
 import numpy as np
+import yaml
 from matplotlib import pyplot as plt
+
+from meta_vars import META_FILE_NAME
 from os import path, makedirs
+
+from tasks.train_vae import TrainVAE
+from utils.tensor_holders import TensorHolder
+
+
+def main(results_base_dir: str):
+    losses_per_task = {}
+    stds_per_task = {}
+    times_per_task = {}
+
+    configs = []
+    for config_file_path in Path(results_base_dir).rglob(META_FILE_NAME):
+        with open(config_file_path) as f:
+            config = yaml.safe_load(f)
+            config['config_dir'] = path.dirname(config_file_path)
+            configs.append(config)
+
+    for config in configs:
+        for seed in config['seeds']:
+            config_path = config['config_dir']
+            results_dir = path.join(config_path, str(seed))
+            config['results_dir'] = results_dir
+            task = config.get('task')
+
+            train_loss = TensorHolder(results_dir, 'train_loss')
+            test_loss = TensorHolder(results_dir, 'test_loss')
+            if not train_loss.is_empty() and not test_loss.is_empty():
+                if task not in losses_per_task:
+                    losses_per_task[task] = dict()
+
+                if config_path not in losses_per_task[task]:
+                    losses_per_task[task][config_path] = config, [(train_loss.numpy(), test_loss.numpy())]
+                else:
+                    losses_per_task[task][config_path][1].append((train_loss.numpy(), test_loss.numpy()))
+
+            estimator_stds = TensorHolder(results_dir, 'estimator_stds')
+            if not estimator_stds.is_empty():
+                if task not in stds_per_task:
+                    stds_per_task[task] = dict()
+
+                if config_path not in stds_per_task[task]:
+                    stds_per_task[task][config_path] = config, [estimator_stds.numpy()]
+                else:
+                    stds_per_task[task][config_path][1].append(estimator_stds.numpy())
+
+                if task == 'vae':
+                    TrainVAE(**config).output_aux_data()
+
+            estimator_times = TensorHolder(results_dir, 'estimator_times')
+            if not estimator_times.is_empty():
+                if task not in times_per_task:
+                    times_per_task[task] = dict()
+
+                if config_path not in times_per_task[task]:
+                    times_per_task[task][config_path] = config, [estimator_times.numpy()]
+                else:
+                    times_per_task[task][config_path][1].append(estimator_times.numpy())
+
+    plot_losses(results_base_dir, losses_per_task)
+    plot_estimator_variances(results_base_dir, stds_per_task)
+    plot_estimator_performances(results_base_dir, times_per_task)
 
 
 def plot_losses(plot_dir, losses_per_task):
@@ -82,3 +148,9 @@ def __parse_label(config: Dict[str, Any], label: str):
     for k, v in config:
         label = label.replace(f'${k}$', str(v))
     return label
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Plotting utility')
+    parser.add_argument('CONFIG', help='Path to config file')
+    main(parser.parse_args().CONFIG)

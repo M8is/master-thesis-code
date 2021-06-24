@@ -35,7 +35,7 @@ class TrainVAE(Trainer):
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(x_recon, x.expand_as(x_recon)).flatten(start_dim=-n_data_dims).sum(dim=-1)
 
-    def post_training(self) -> None:
+    def output_aux_data(self) -> None:
         self.__generate_images()
 
     def __generate_images(self) -> None:

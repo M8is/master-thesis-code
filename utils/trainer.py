@@ -51,7 +51,6 @@ class Trainer(ABC):
         estimator_times.save()
         estimator_stds.save()
         torch.save(self.model, path.join(self.results_dir, f'{self.estimator}_{self.epochs}.pt'))
-        self.post_training()
 
     def __train_epoch(self) -> Tuple[torch.Tensor, torch.Tensor]:
         self.model.train()
@@ -148,5 +147,5 @@ class Trainer(ABC):
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         pass
 
-    def post_training(self) -> None:
+    def output_aux_data(self) -> None:
         pass
