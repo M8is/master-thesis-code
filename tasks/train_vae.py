@@ -39,17 +39,13 @@ class TrainVAE(Trainer):
         self.__generate_images()
 
     def __generate_images(self) -> None:
-        if not path.exists(self.results_dir):
-            makedirs(self.results_dir)
-        else:
-            print(f"Skipping: '{self.results_dir}' already exists.")
-            return
-
+        output_dir = path.join(self.results_dir, 'images')
+        makedirs(output_dir, exist_ok=True)
         with eval_mode(self.model):
-            print(f'Generating images for in `{self.results_dir}`...')
+            print(f'Generating images in `{output_dir}`...')
             n = min(self.data_holder.batch_size, 8)
             for batch_id, (x_batch, _) in enumerate(self.data_holder.test):
                 x_batch = x_batch[:n].to(self.device)
                 _, x_pred_batch = self.model(x_batch)
                 comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
-                save_image(comparison, path.join(self.results_dir, f'recon_{batch_id}.png'), nrow=n)
+                save_image(comparison, path.join(output_dir, f'recon_{batch_id}.png'), nrow=n)
