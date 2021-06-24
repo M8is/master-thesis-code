@@ -40,7 +40,9 @@ class TrainVAE(Trainer):
 
     def generate_images(self) -> None:
         output_dir = path.join(self.results_dir, 'images')
-        makedirs(output_dir, exist_ok=True)
+        if path.exists(output_dir):
+            return
+        makedirs(output_dir)
         with eval_mode(self.model):
             print(f'Generating images in `{output_dir}`...')
             n = min(self.data_holder.batch_size, 8)

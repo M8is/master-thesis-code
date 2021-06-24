@@ -80,7 +80,7 @@ def plot_losses(plot_dir, losses_per_task):
         for config, losses in configs_and_losses.values():
             train_losses, _ = zip(*losses)
             train_losses = np.stack(train_losses)
-            __plot(train_losses.mean(axis=0), train_losses.std(axis=0), **config)
+            __plot(train_losses.mean(axis=0), train_losses.std(axis=0), config)
             dataset = config['dataset']
         __legend()
         plt.xlabel("Iterations")
@@ -92,7 +92,7 @@ def plot_losses(plot_dir, losses_per_task):
         for config, losses in configs_and_losses.values():
             _, test_losses = zip(*losses)
             test_losses = np.stack(test_losses)
-            __plot(test_losses.mean(axis=0), test_losses.std(axis=0), **config)
+            __plot(test_losses.mean(axis=0), test_losses.std(axis=0), config)
         __legend()
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
@@ -110,7 +110,7 @@ def plot_estimator_variances(plot_dir, stds_per_task):
         plt.yscale('log')
         for config, stds in configs_and_losses.values():
             variances = np.array(stds) ** 2
-            __plot(variances.mean(axis=0), variances.std(axis=0), plot_label=config['mc_estimator'])
+            __plot(variances.mean(axis=0), variances.std(axis=0), config)
             dataset = config['dataset']
         __legend()
         plt.xlabel("Iterations [x10]")
@@ -133,7 +133,8 @@ def plot_estimator_performances(plot_dir, times_per_task):
                 print(f'  std: {std_perf}', file=f)
 
 
-def __plot(means, stds, plot_label=None, **_):
+def __plot(means, stds, config):
+    plot_label = __parse_label(config)
     plt.plot(means, label=plot_label, linewidth=.5)
     if stds is not None:
         plt.fill_between(range(len(means)), means - stds, means + stds, alpha=.3)
@@ -144,8 +145,9 @@ def __legend():
     plt.setp(legend.get_lines(), linewidth=2)
 
 
-def __parse_label(config: Dict[str, Any], label: str):
-    for k, v in config:
+def __parse_label(config: Dict[str, Any]):
+    label = config['plot_label']
+    for k, v in config.items():
         label = label.replace(f'${k}$', str(v))
     return label
 

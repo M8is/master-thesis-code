@@ -2,7 +2,6 @@ import argparse
 import shutil
 import subprocess
 from os import path, makedirs
-from shutil import copyfile
 from typing import List, Dict, Any
 
 import torch
@@ -40,10 +39,8 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
         config['revision'] = git_revision
         results_subpath = path.join(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
         makedirs(results_subpath, exist_ok=True)
-        with open(path.join(results_subpath, META_FILE_NAME), 'w+') as f:
-            yaml.safe_dump(config, f)
 
-        seeds = config['seeds']
+        seeds = config.pop('seeds')
         for j, seed in enumerate(seeds):
             results_dir = path.join(results_subpath, str(seed))
             config['results_dir'] = results_dir
@@ -65,6 +62,9 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
                     train_polynomial(**config)
                 else:
                     raise ValueError(f"Unknown task '{task}'.")
+
+        with open(path.join(results_subpath, META_FILE_NAME), 'w+') as f:
+            yaml.safe_dump(config, f)
 
 
 if __name__ == '__main__':
