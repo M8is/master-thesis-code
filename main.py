@@ -31,10 +31,6 @@ def main(args):
         shutil.rmtree(results_base_dir)
         print(f"Cleaned '{results_base_dir}'.")
 
-    # Copy config file to results dir
-    config_results_path = path.join(results_base_dir, path.basename(config_path))
-    makedirs(results_base_dir, exist_ok=True)
-    copyfile(config_path, config_results_path)
     training(configs, results_base_dir)
 
 
@@ -43,6 +39,7 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
     for i, config in enumerate(configs):
         config['revision'] = git_revision
         results_subpath = path.join(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
+        makedirs(results_subpath, exist_ok=True)
         with open(path.join(results_subpath, META_FILE_NAME), 'w+') as f:
             yaml.safe_dump(config, f)
 
