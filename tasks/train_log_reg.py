@@ -3,7 +3,7 @@ import torch.utils.data
 
 import models.logistic_regression
 from utils.estimator_factory import get_estimator
-from utils.trainer import Trainer
+from tasks.trainer import Trainer
 
 
 class TrainLogReg(Trainer):
@@ -31,3 +31,6 @@ class TrainLogReg(Trainer):
         # Use no reduction to get separate losses for each image
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(y_pred, y.expand_as(y_pred))
+
+    def predict(self, samples: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
+        return self.model.predict(samples, data)

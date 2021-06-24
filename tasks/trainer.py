@@ -64,12 +64,10 @@ class Trainer(ABC):
             kld = distribution.kl().mean()
             self.optimizer.zero_grad()
             kld.backward(retain_graph=True)
-
-            def loss_fn(samples):
-                return self.loss(x_batch, y_batch, self.model.decoder(samples))
-
+            loss_fn = self.__get_loss_fn(x_batch, y_batch)
             self.model.probabilistic.backward(distribution, loss_fn)
-            loss.backward()
+            if loss.requires_grad:
+                loss.backward()
             self.optimizer.step()
             if batch_id % self.print_interval == 0:
                 print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
@@ -108,14 +106,16 @@ class Trainer(ABC):
 
     def __estimate_time(self, n_estimates: int) -> torch.Tensor:
         self.model.train()
-        x_batch = None
+
+        loss_fn = None
+        distribution = None
         for (b, y) in self.data_holder.train:
             x_batch = b.to(self.device)
             y_batch = y.to(self.device)
-        distribution, _ = self.model(x_batch)
-
-        def loss_fn(samples):
-            return self.loss(x_batch, y_batch, self.model.decoder(samples))
+            loss_fn = self.__get_loss_fn(x_batch, y_batch)
+            distribution, _ = self.model(x_batch)
+        assert loss_fn is not None
+        assert distribution is not None
 
         times = []
         self.optimizer.zero_grad()
@@ -128,6 +128,9 @@ class Trainer(ABC):
             self.optimizer.zero_grad()
         times = torch.FloatTensor(times)
         return torch.stack((times.mean(), times.std()))
+
+    def __get_loss_fn(self, x, y):
+        return lambda samples: self.loss(x, y, self.predict(samples, x))
 
     @property
     def variance_interval(self) -> int:
@@ -147,5 +150,6 @@ class Trainer(ABC):
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         pass
 
-    def output_aux_data(self) -> None:
+    @abstractmethod
+    def predict(self, samples: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
         pass

@@ -54,7 +54,7 @@ def main(results_base_dir: str):
                     stds_per_task[task][config_path][1].append(estimator_stds.numpy())
 
                 if task == 'vae':
-                    TrainVAE(**config).output_aux_data()
+                    TrainVAE(**config).generate_images()
 
             estimator_times = TensorHolder(results_dir, 'estimator_times')
             if not estimator_times.is_empty():

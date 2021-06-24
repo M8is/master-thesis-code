@@ -6,7 +6,7 @@ from torchvision.utils import save_image
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
 from utils.model_factory import get_vae
-from utils.trainer import Trainer
+from tasks.trainer import Trainer
 
 
 class TrainVAE(Trainer):
@@ -35,10 +35,10 @@ class TrainVAE(Trainer):
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(x_recon, x.expand_as(x_recon)).flatten(start_dim=-n_data_dims).sum(dim=-1)
 
-    def output_aux_data(self) -> None:
-        self.__generate_images()
+    def predict(self, samples: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
+        return self.model.decoder(samples)
 
-    def __generate_images(self) -> None:
+    def generate_images(self) -> None:
         output_dir = path.join(self.results_dir, 'images')
         makedirs(output_dir, exist_ok=True)
         with eval_mode(self.model):
