@@ -34,9 +34,11 @@ def main(args):
 
 
 def training(configs: List[Dict[str, Any]], results_base_dir: str):
-    git_revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    git_revision = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
     for i, config in enumerate(configs):
-        config['revision'] = git_revision
+        meta = config.copy()
+        meta['revision'] = git_revision
+
         results_subpath = path.join(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
         makedirs(results_subpath, exist_ok=True)
 
@@ -64,7 +66,7 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
                     raise ValueError(f"Unknown task '{task}'.")
 
         with open(path.join(results_subpath, META_FILE_NAME), 'w+') as f:
-            yaml.safe_dump(config, f)
+            yaml.safe_dump(meta, f)
 
 
 if __name__ == '__main__':
