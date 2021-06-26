@@ -346,3 +346,8 @@ results/
 
 # Ignore vscode files
 .vscode/
+
+# Ignore plotting outputs
+notebooks/*.jpg
+notebooks/*.pdf
+notebooks/*.svg
