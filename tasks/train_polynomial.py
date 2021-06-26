@@ -1,4 +1,5 @@
 from os import path
+from typing import List
 
 import numpy as np
 import torch
@@ -9,10 +10,12 @@ from utils.estimator_factory import get_estimator
 from utils.tensor_holders import TensorHolder
 
 
-def train_polynomial(results_dir, device, iterations, sample_size, learning_rate, mc_estimator, param_dims,
-                     distribution, init_params, print_interval=100, **kwargs):
+def train_polynomial(results_dir, iterations, sample_size, learning_rate, mc_estimator, param_dims, distribution,
+                     init_params, device='cpu', print_interval=100, **kwargs) -> List[str]:
     train_losses = TensorHolder(results_dir, 'train_loss')
     test_losses = TensorHolder(results_dir, 'test_loss')
+
+    device = torch.device(device)
 
     raw_params = torch.nn.Parameter(torch.FloatTensor(init_params))
 
@@ -40,7 +43,8 @@ def train_polynomial(results_dir, device, iterations, sample_size, learning_rate
     distribution, _ = estimator(raw_params)
     __try_plot_pdf(distribution, iterations, results_dir)
     torch.save(raw_params, path.join(results_dir, f'{mc_estimator}_{iterations}.pt'))
-    return train_losses, test_losses
+
+    return ['train_loss', 'test_loss']
 
 
 def __test_loss(distribution, n_samples=10):

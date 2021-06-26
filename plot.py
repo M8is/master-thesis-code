@@ -6,7 +6,6 @@ import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 
-from meta_vars import META_FILE_NAME
 from os import path, makedirs
 
 from tasks.train_vae import TrainVAE
@@ -19,7 +18,7 @@ def main(results_base_dir: str):
     times_per_task = {}
 
     configs = []
-    for config_file_path in Path(results_base_dir).rglob(META_FILE_NAME):
+    for config_file_path in Path(results_base_dir).rglob('meta.yaml'):
         with open(config_file_path) as f:
             config = yaml.safe_load(f)
             config['config_dir'] = path.dirname(config_file_path)

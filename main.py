@@ -1,17 +1,15 @@
 import argparse
 import shutil
 import subprocess
-from os import path, makedirs
+from os import path
 from typing import List, Dict, Any
 
-import torch
 import yaml
 
-from meta_vars import META_FILE_NAME
 from tasks.train_log_reg import TrainLogReg
 from tasks.train_polynomial import train_polynomial
 from tasks.train_vae import TrainVAE
-from utils.tensor_holders import TensorHolder
+from utils.meta_util import save_meta_info, meta_exists
 from utils.seeds import fix_random_seed
 
 
@@ -36,37 +34,28 @@ def main(args):
 def training(configs: List[Dict[str, Any]], results_base_dir: str):
     git_revision = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
     for i, config in enumerate(configs):
-        meta = config.copy()
-        meta['revision'] = git_revision
-
+        config['revision'] = git_revision
         results_subpath = path.join(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
-        makedirs(results_subpath, exist_ok=True)
-
-        seeds = config.pop('seeds')
+        seeds = config.pop('seeds') if 'seeds' in config else [config['seed']]
         for j, seed in enumerate(seeds):
             results_dir = path.join(results_subpath, str(seed))
-            config['results_dir'] = results_dir
-
-            # Replace device string with device class
-            config['device'] = torch.device(config.get('device', 'cpu'))
-
-            task = config.get('task')
-            if not TensorHolder(results_dir, 'train_loss').is_empty():
-                print(f"Skipping training; Loading existing results from '{results_dir}'...")
+            if meta_exists(results_dir):
+                print(f"Skipping training; meta file already exists in '{results_dir}'.")
             else:
                 print(f"=== Training {i * len(seeds) + j}/{len(seeds) * len(configs)} ===")
+                config['seed'] = seed
                 fix_random_seed(seed)
+                task = config['task']
                 if task == 'vae':
-                    TrainVAE(**config).train()
+                    saved_metrics = TrainVAE(**config, results_dir=results_dir).train()
                 elif task == 'logreg':
-                    TrainLogReg(**config).train()
+                    saved_metrics = TrainLogReg(**config, results_dir=results_dir).train()
                 elif task == 'polynomial':
-                    train_polynomial(**config)
+                    saved_metrics = train_polynomial(**config, results_dir=results_dir)
                 else:
                     raise ValueError(f"Unknown task '{task}'.")
-
-        with open(path.join(results_subpath, META_FILE_NAME), 'w+') as f:
-            yaml.safe_dump(meta, f)
+                config['saved_metrics'] = saved_metrics
+                save_meta_info(config, results_dir)
 
 
 if __name__ == '__main__':

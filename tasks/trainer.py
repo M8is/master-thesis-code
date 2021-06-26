@@ -13,10 +13,10 @@ from utils.tensor_holders import TensorHolder
 
 
 class Trainer(ABC):
-    def __init__(self, results_dir: str, device: str, epochs: int, mc_estimator: str, compute_variance: bool = False,
-                 compute_perf: bool = False, print_interval: int = 100, **kwargs):
+    def __init__(self, results_dir: str, epochs: int, mc_estimator: str, device: str = 'cpu',
+                 compute_variance: bool = False, compute_perf: bool = False, print_interval: int = 100, **kwargs):
         self.results_dir = results_dir
-        self.device = device
+        self.device = torch.device(device)
         self.epochs = epochs
         self.data_holder = DataHolder.get(**kwargs)
         self.estimator = mc_estimator
@@ -51,6 +51,14 @@ class Trainer(ABC):
         estimator_times.save()
         estimator_stds.save()
         torch.save(self.model, path.join(self.results_dir, f'{self.estimator}_{self.epochs}.pt'))
+
+        saved_tensors = ['train_loss', 'test_loss']
+        if self.compute_perf:
+            saved_tensors.append('estimator_times')
+        if self.compute_variance:
+            saved_tensors.append('estimators_stds')
+
+        return saved_tensors
 
     def __train_epoch(self) -> Tuple[torch.Tensor, torch.Tensor]:
         self.model.train()
