@@ -28,6 +28,10 @@ def load_meta_infos(base_dir: str) -> Iterable[Dict[str, Any]]:
     return metas
 
 
+def filter_by(dicts: Iterable[Dict[str, Any]], **filters: str) -> Iterable[Dict[str, Any]]:
+    return [d for d in dicts if all(str(d[k].lower()) == v.lower() for k, v in filters.items())]
+
+
 def collect_by(dicts: Iterable[Dict[str, Any]], *keys: str) -> Dict[str, Iterable[Dict[str, Any]]]:
     result = defaultdict(list)
     for d in dicts:
