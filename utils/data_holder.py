@@ -49,6 +49,18 @@ class DataHolder(ABC):
         pass
 
 
+@DataHolder.register_dataset('empty')
+class EmptyDataset(DataHolder):
+    @property
+    def dims(self):
+        return ()
+
+    @staticmethod
+    def _load(batch_size, shuffle=True, *args, **kwargs):
+        empty = [(torch.empty(batch_size), torch.empty(batch_size))]
+        return lambda: empty, lambda: empty
+
+
 @DataHolder.register_dataset('mnist')
 class MNIST(DataHolder):
     @property

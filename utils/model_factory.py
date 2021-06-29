@@ -23,4 +23,4 @@ def get_vae(vae_type: str, data_dims: List[int], hidden_dims: List[int], distrib
 
 
 def load_models(base_dir: Path) -> Iterable[Tuple[Path, torch.nn.Module]]:
-    return [(file_path.parent, torch.load(file_path)) for file_path in base_dir.rglob('*.pt')]
+    return [(file_path, torch.load(file_path)) for file_path in base_dir.rglob('*.pt')]

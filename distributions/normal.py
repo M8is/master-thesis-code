@@ -22,11 +22,11 @@ class MultivariateNormal(Distribution):
         return torch.stack((mean, std))
 
     def pdf(self):
-        mean, std = self.params.cpu()
-        dims = mean.size(-1)
+        mean, std = self.params.detach().cpu()
+        dims = mean.size()[-1]
         if dims == 1:
             linspace = np.linspace(-3, 3, 300)
-            return linspace, scipy.stats.norm.pdf(linspace, mean, std)
+            return linspace, scipy.stats.norm.pdf(linspace, mean, std).squeeze()
         elif dims == 2:
             x, y = np.mgrid[-3:3:.05, -3:3:.05]
             grid = np.dstack((x, y))
@@ -63,7 +63,6 @@ class MultivariateNormal(Distribution):
             std_grad /= std_grad.size(0)
         mean.backward(gradient=mean_grad, retain_graph=True)
         std.backward(gradient=std_grad, retain_graph=retain_graph)
-        return torch.cat((mean_grad, std_grad), dim=-1)
 
     def kl(self):
         mean, std = self.params

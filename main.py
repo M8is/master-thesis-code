@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 import yaml
 
 from tasks.train_log_reg import TrainLogReg
-from tasks.train_polynomial import train_polynomial
+from tasks.train_polynomial import TrainPolynomial
 from tasks.train_vae import TrainVAE
 from utils.meta_util import save_meta_info, meta_exists
 from utils.seeds import fix_random_seed
@@ -47,12 +47,13 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
                 config['seed'] = seed
                 fix_random_seed(seed)
                 task = config['task']
+                # TODO: add StochasticTrainer.get(task: str)
                 if task == 'vae':
                     saved_metrics = TrainVAE(**config, results_dir=results_dir).train()
                 elif task == 'logreg':
                     saved_metrics = TrainLogReg(**config, results_dir=results_dir).train()
                 elif task == 'polynomial':
-                    saved_metrics = train_polynomial(**config, results_dir=results_dir)
+                    saved_metrics = TrainPolynomial(**config, results_dir=results_dir).train()
                 else:
                     raise ValueError(f"Unknown task '{task}'.")
                 config['saved_metrics'] = saved_metrics

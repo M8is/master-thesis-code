@@ -16,7 +16,8 @@ from utils.tensor_holders import TensorHolder
 
 class StochasticTrainer(ABC):
     def __init__(self, results_dir: str, epochs: int, mc_estimator: str, sample_size: int, device: str = 'cpu',
-                 compute_variance: bool = False, compute_perf: bool = False, print_interval: int = 100, **kwargs):
+                 compute_variance: bool = False, compute_perf: bool = False, print_interval: int = 100,
+                 epoch_print_interval: int = 1, **kwargs):
         self.results_dir = results_dir
         self.device = device
         self.epochs = epochs
@@ -26,6 +27,7 @@ class StochasticTrainer(ABC):
         self.compute_variance = compute_variance
         self.compute_perf = compute_perf
         self.print_interval = print_interval
+        self.epoch_print_interval = epoch_print_interval
 
     def train(self) -> Iterable[str]:
         train_losses = TensorHolder(self.results_dir, 'train_loss')
@@ -41,10 +43,11 @@ class StochasticTrainer(ABC):
             test_losses.add(test_loss)
             if est_std.numel():
                 estimator_stds.add(est_std)
-            print(f"Epoch: {epoch}/{self.epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
-                  f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
-                  flush=True)
-            print(60 * "-")
+            if epoch % self.epoch_print_interval == 0 or epoch == self.epochs:
+                print(f"Epoch: {epoch}/{self.epochs}, Train loss: {train_losses.numpy()[-1].mean():.2f}, "
+                      f"Test loss: {test_losses.numpy()[-1].mean():.2f}",
+                      flush=True)
+                print(60 * "-")
         if self.compute_perf:
             print(f'Estimating performance of {self.gradient_estimator} ...')
             estimator_times.add(self.__estimate_time(n_estimates=10000))
@@ -81,7 +84,7 @@ class StochasticTrainer(ABC):
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
-            if batch_id % self.print_interval == 0:
+            if batch_id - 1 % self.print_interval == 0:
                 print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
             if self.compute_variance and batch_id % self.variance_interval == 0:
                 estimator_stds.append(self.__estimate_std(self.model.encode(x_batch), loss_fn, n_estimates=500))

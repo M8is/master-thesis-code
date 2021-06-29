@@ -1,11 +1,7 @@
-from os import path, makedirs
-
 import torch
-from torchvision.utils import save_image
 
-from utils.eval_util import eval_mode
-from utils.model_factory import get_vae
 from tasks.trainer import StochasticTrainer
+from utils.model_factory import get_vae
 
 
 class TrainVAE(StochasticTrainer):

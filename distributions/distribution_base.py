@@ -30,7 +30,7 @@ class Distribution(ABC):
         raise NotImplemented(f"PDF is not yet implemented for {type(self).__name__}")
 
     @abstractmethod
-    def mvd_backward(self, losses, retain_graph) -> torch.Tensor:
+    def mvd_backward(self, losses, retain_graph) -> None:
         pass
 
     @abstractmethod
