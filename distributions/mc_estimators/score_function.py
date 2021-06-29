@@ -1,7 +1,7 @@
 from .estimator_base import MCEstimator
 
 
-class Reinforce(MCEstimator):
+class SFEstimator(MCEstimator):
     __LOSS_AVG_KEY = '__loss_avg'
 
     @property

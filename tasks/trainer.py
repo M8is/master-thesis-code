@@ -22,7 +22,7 @@ class StochasticTrainer(ABC):
         self.epochs = epochs
         self.sample_size = sample_size
         self.data_holder = DataHolder.get(**kwargs)
-        self.estimator = get_estimator(mc_estimator)
+        self.gradient_estimator = get_estimator(mc_estimator)
         self.compute_variance = compute_variance
         self.compute_perf = compute_perf
         self.print_interval = print_interval
@@ -33,7 +33,7 @@ class StochasticTrainer(ABC):
         estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
         estimator_times = TensorHolder(self.results_dir, 'estimator_times')
 
-        print(f'Training with {self.estimator}.')
+        print(f'Training with {self.gradient_estimator}.')
         for epoch in range(1, self.epochs + 1):
             train_loss, est_std = self.__train_epoch()
             test_loss = self.__test_epoch()
@@ -46,14 +46,14 @@ class StochasticTrainer(ABC):
                   flush=True)
             print(60 * "-")
         if self.compute_perf:
-            print(f'Estimating performance of {self.estimator} ...')
+            print(f'Estimating performance of {self.gradient_estimator} ...')
             estimator_times.add(self.__estimate_time(n_estimates=10000))
 
         train_losses.save()
         test_losses.save()
         estimator_times.save()
         estimator_stds.save()
-        torch.save(self.model, path.join(self.results_dir, f'{self.estimator.name}_{self.epochs}.pt'))
+        torch.save(self.model, path.join(self.results_dir, f'{self.gradient_estimator.name}_{self.epochs}.pt'))
 
         saved_tensors = ['train_loss', 'test_loss']
         if self.compute_perf:
@@ -77,7 +77,7 @@ class StochasticTrainer(ABC):
             self.optimizer.zero_grad()
             kld.backward(retain_graph=True)
             loss_fn = self.__get_loss_fn(x_batch, y_batch)
-            distribution.backward(self.estimator, loss_fn, self.sample_size)
+            distribution.backward(self.gradient_estimator, loss_fn, self.sample_size)
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
@@ -109,7 +109,7 @@ class StochasticTrainer(ABC):
         for i in range(n_estimates):
             retain_graph = (i + 1) < n_estimates
             distribution.params.retain_grad()
-            distribution.backward(self.estimator, loss_fn, sample_size, retain_graph=retain_graph)
+            distribution.backward(self.gradient_estimator, loss_fn, sample_size, retain_graph=retain_graph)
             grads.append(distribution.params.grad)
             self.optimizer.zero_grad()
         return torch.stack(grads).std(dim=0).mean()
@@ -127,7 +127,7 @@ class StochasticTrainer(ABC):
             for i in range(n_estimates):
                 retain_graph = (i + 1) < n_estimates
                 before = time.process_time()
-                distribution.backward(self.estimator, loss_fn, self.sample_size, retain_graph=retain_graph)
+                distribution.backward(self.gradient_estimator, loss_fn, self.sample_size, retain_graph=retain_graph)
                 after = time.process_time()
                 times.append(after - before)
                 self.optimizer.zero_grad()

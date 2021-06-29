@@ -1,11 +1,17 @@
-from distributions.mc_estimators.measure_valued_derivative import MVD
-from distributions.mc_estimators.pathwise import Pathwise
-from distributions.mc_estimators.reinforce import Reinforce
+from distributions.mc_estimators.measure_valued import MVEstimator
+from distributions.mc_estimators.pathwise import PathwiseEstimator
+from distributions.mc_estimators.score_function import SFEstimator
 
 estimators = {
-    'pathwise': Pathwise,
-    'reinforce': Reinforce,
-    'mvd': MVD,
+    'pathwise': PathwiseEstimator,
+    'reptrick': PathwiseEstimator,
+    'score-function': SFEstimator,
+    'log-ratio': SFEstimator,
+    'sf': SFEstimator,
+    'reinforce': SFEstimator,
+    'mv': MVEstimator,
+    'mvd': MVEstimator,
+    'measure-valued': MVEstimator,
 }
 
 

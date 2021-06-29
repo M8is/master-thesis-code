@@ -1,7 +1,7 @@
 from .estimator_base import MCEstimator
 
 
-class MVD(MCEstimator):
+class MVEstimator(MCEstimator):
     @property
     def name(self) -> str:
         return 'measure-valued'

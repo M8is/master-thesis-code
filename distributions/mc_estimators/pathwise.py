@@ -1,7 +1,7 @@
 from .estimator_base import MCEstimator
 
 
-class Pathwise(MCEstimator):
+class PathwiseEstimator(MCEstimator):
     @property
     def name(self) -> str:
         return 'pathwise'
