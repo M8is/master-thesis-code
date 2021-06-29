@@ -1,14 +1,13 @@
 import argparse
+from os import path, makedirs
 from pathlib import Path
-from typing import Dict, Any
 
 import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 
-from os import path, makedirs
-
 from tasks.train_vae import TrainVAE
+from utils.plot_util import plot, legend
 from utils.tensor_holders import TensorHolder
 
 
@@ -79,9 +78,9 @@ def plot_losses(plot_dir, losses_per_task):
         for config, losses in configs_and_losses.values():
             train_losses, _ = zip(*losses)
             train_losses = np.stack(train_losses)
-            __plot(train_losses.mean(axis=0), train_losses.std(axis=0), config)
+            plot(train_losses.mean(axis=0), train_losses.std(axis=0), config)
             dataset = config['dataset']
-        __legend()
+        legend()
         plt.xlabel("Iterations")
         plt.ylabel("Loss")
         plt.title(f"{dataset} train loss")
@@ -91,8 +90,8 @@ def plot_losses(plot_dir, losses_per_task):
         for config, losses in configs_and_losses.values():
             _, test_losses = zip(*losses)
             test_losses = np.stack(test_losses)
-            __plot(test_losses.mean(axis=0), test_losses.std(axis=0), config)
-        __legend()
+            plot(test_losses.mean(axis=0), test_losses.std(axis=0), config)
+        legend()
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
         plt.title(f"{dataset} test loss")
@@ -109,9 +108,9 @@ def plot_estimator_variances(plot_dir, stds_per_task):
         plt.yscale('log')
         for config, stds in configs_and_losses.values():
             variances = np.array(stds) ** 2
-            __plot(variances.mean(axis=0), variances.std(axis=0), config)
+            plot(variances.mean(axis=0), variances.std(axis=0), config)
             dataset = config['dataset']
-        __legend()
+        legend()
         plt.xlabel("Iterations [x10]")
         plt.ylabel("Variance")
         plt.title(f"{dataset} estimator variances")
@@ -130,25 +129,6 @@ def plot_estimator_performances(plot_dir, times_per_task):
                 print(f'{config["mc_estimator"]}:', file=f)
                 print(f'  mean: {mean_perf}', file=f)
                 print(f'  std: {std_perf}', file=f)
-
-
-def __plot(means, stds, config):
-    plot_label = __parse_label(config)
-    plt.plot(means, label=plot_label, linewidth=.5)
-    if stds is not None:
-        plt.fill_between(range(len(means)), means - stds, means + stds, alpha=.3)
-
-
-def __legend():
-    legend = plt.legend()
-    plt.setp(legend.get_lines(), linewidth=2)
-
-
-def __parse_label(config: Dict[str, Any]):
-    label = config['plot_label']
-    for k, v in config.items():
-        label = label.replace(f'${k}$', str(v))
-    return label
 
 
 if __name__ == '__main__':

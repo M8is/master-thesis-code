@@ -349,5 +349,6 @@ results/
 
 # Ignore plotting outputs
 notebooks/*.jpg
+notebooks/*.png
 notebooks/*.pdf
 notebooks/*.svg

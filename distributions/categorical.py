@@ -15,10 +15,10 @@ class Categorical(Distribution):
         # TODO: test this
         return torch.argmax(F.gumbel_softmax(torch.log(self.params)))
 
-    def mvd_sample(self, size):
+    def mvsample(self, size):
         if size > 1:
             print("Warning: Categorical MVD ignores sample sizes greater than one.")
-        return torch.arange(self.params.size(-1), device=self.device)
+        return torch.arange(self.params.size(-1), device=self.params.device)
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():

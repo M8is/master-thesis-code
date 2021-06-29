@@ -1,7 +1,10 @@
-from typing import List
+from pathlib import Path
+from typing import List, Iterable, Tuple
 
-from mc_estimators.estimator_base import MCEstimator
+import torch
+
 from models import vae
+from utils.distribution_factory import get_distribution_type
 
 vaes = {
     'fc': (vae.FCEncoder, vae.FCDecoder),
@@ -9,21 +12,15 @@ vaes = {
 }
 
 
-def get_vae(vae_type: str, estimator: MCEstimator, data_dims: List[int], hidden_dims: List[int], latent_dim: int, *_,
-            **__):
-    """ Instantiate a new VAE
-
-    :param vae_type: Which VAE architecture to use. Check `vaes.keys()` for valid values.
-    :param estimator: MC estimator for the probabilistic layer
-    :param data_dims: Input size
-    :param hidden_dims: List of hidden dimensions the model should use (mirrored in decoder)
-    :param latent_dim: Size of the latent dimension
-    :return: Model instance
-    """
+def get_vae(vae_type: str, data_dims: List[int], hidden_dims: List[int], distribution: str, latent_dim: int, *_, **__):
     vae_type = vae_type.lower()
     if vae_type not in vaes:
-        raise ValueError(f'Model {vae_type} not available.')
+        raise ValueError(f'Model {vae_type} not available. Available VAE types are `{(k for k in vaes.keys())}`.')
     encoder, decoder = vaes[vae_type]
-    return vae.VAE(encoder(data_dims, hidden_dims, estimator.distribution_type.param_dims(latent_dim)),
-                   decoder(latent_dim, hidden_dims[::-1], data_dims),
-                   estimator)
+    distribution_type = get_distribution_type(distribution)
+    return vae.VAE(encoder(data_dims, hidden_dims, distribution_type.param_dims(latent_dim)),
+                   decoder(latent_dim, hidden_dims[::-1], data_dims), distribution_type)
+
+
+def load_models(base_dir: Path) -> Iterable[Tuple[Path, torch.nn.Module]]:
+    return [(file_path.parent, torch.load(file_path)) for file_path in base_dir.rglob('*.pt')]

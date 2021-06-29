@@ -8,13 +8,13 @@ class Exponential(Distribution):
 
     def sample(self, sample_shape: torch.Size = torch.Size([])):
         dist = torch.distributions.exponential.Exponential(self.params)
-        return dist.sample(sample_shape).to(self.device)
+        return dist.sample(sample_shape)
 
     def rsample(self, sample_shape: torch.Size = torch.Size([])):
         dist = torch.distributions.exponential.Exponential(self.params)
-        return dist.rsample(sample_shape).to(self.device)
+        return dist.rsample(sample_shape)
 
-    def mvd_sample(self, size):
+    def mvsample(self, size):
         pos_samples = self.__sample_exponential(size, self.params)
         neg_samples = self.__sample_negative(size, self.params)
         samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
@@ -33,10 +33,12 @@ class Exponential(Distribution):
     def log_prob(self, value):
         return torch.distributions.Exponential(self.params).log_prob(value).sum(dim=-1)
 
-    def __sample_exponential(self, sample_size, rate):
-        return torch.distributions.exponential.Exponential(rate).sample((sample_size,)).to(self.device)
+    @staticmethod
+    def __sample_exponential(sample_size, rate):
+        return torch.distributions.exponential.Exponential(rate).sample((sample_size,))
 
-    def __sample_negative(self, sample_size, rate):
+    @staticmethod
+    def __sample_negative(sample_size, rate):
         """
         Samples from rate^(-1) * Erlang(2, rate).
         :param sample_size: Number of samples
@@ -44,5 +46,5 @@ class Exponential(Distribution):
         :return: Negative samples for the MVD of an exponential distribution.
         """
         k = 2
-        uniform_samples = torch.rand((sample_size, k, *rate.shape), requires_grad=False).to(self.device)
+        uniform_samples = torch.rand((sample_size, k, *rate.shape), requires_grad=False).to(rate.device)
         return - torch.log(uniform_samples.prod(dim=1))

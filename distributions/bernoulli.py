@@ -12,8 +12,8 @@ class Bernoulli(Distribution):
     def rsample(self, sample_shape: torch.Size = torch.Size([])):
         return torch.distributions.Bernoulli(self.params).rsample(sample_shape)
 
-    def mvd_sample(self, size):
-        return torch.tensor([1, 0]).reshape(2, 1, 1, 1, 1).to(self.device)
+    def mvsample(self, size):
+        return torch.tensor([1, 0]).reshape(2, 1, 1, 1, 1).to(self.params.device)
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():

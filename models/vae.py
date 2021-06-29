@@ -1,25 +1,44 @@
 from functools import reduce
 from operator import mul
-
+from pathlib import Path
+from typing import Type, Tuple, Iterable
 import torch
 from torch import nn
+from torchvision.utils import save_image
+
+from distributions.distribution_base import Distribution
+from models.stochastic_model import StochasticModel
+from utils.data_holder import DataHolder
+from utils.eval_util import eval_mode
 
 
-class VAE(torch.nn.Module):
-    def __init__(self, encoder, decoder, probabilistic):
+class VAE(StochasticModel):
+    def __init__(self, encoder: torch.nn.Module, decoder: torch.nn.Module, distribution_type: Type[Distribution]):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self.probabilistic = probabilistic
+        self.distribution_type = distribution_type
 
-    def forward(self, x):
-        raw_params = self.encoder(x)
-        distribution, samples = self.probabilistic(raw_params)
-        return distribution, self.decoder(samples)
+    def encode(self, data: torch.Tensor) -> Distribution:
+        return self.distribution_type(self.encoder(data))
+
+    def interpret(self, sample: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
+        return self.decoder(sample)
+
+    def generate_images(self, output_dir: Path, data_holder: DataHolder, limit: int) -> None:
+        with eval_mode(self):
+            output_dir.mkdir(exist_ok=True)
+            for batch_id, (x_batch, _) in enumerate(data_holder.test):
+                x_batch = x_batch.to(next(self.parameters()).device)
+                x_pred_batch = self(x_batch)
+                comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
+                save_image(comparison, output_dir / f'recon_{batch_id}.png', nrow=x_batch.size()[0])
+                if batch_id == limit:
+                    break
 
 
 class FCEncoder(nn.Module):
-    def __init__(self, input_shape, hidden_dims, output_sizes):
+    def __init__(self, input_shape: Tuple[int, ...], hidden_dims: Iterable[int], output_sizes: Iterable[int]):
         super().__init__()
         self.input_shape = input_shape
         self.layers = nn.ModuleList([])
@@ -41,7 +60,7 @@ class FCEncoder(nn.Module):
 
 
 class FCDecoder(nn.Module):
-    def __init__(self, latent_dim, hidden_dims, output_shape):
+    def __init__(self, latent_dim: int, hidden_dims: Iterable[int], output_shape: Tuple[int, ...]):
         super().__init__()
         self.output_shape = output_shape
 
@@ -67,7 +86,7 @@ class FCDecoder(nn.Module):
 
 
 class Conv2DEncoder(nn.Module):
-    def __init__(self, input_shape, hidden_dims, output_sizes):
+    def __init__(self, input_shape: Tuple[int, ...], hidden_dims: Iterable[int], output_sizes: Iterable[int]):
         super().__init__()
 
         conv_kw = {
@@ -96,7 +115,7 @@ class Conv2DEncoder(nn.Module):
 
 
 class Conv2DDecoder(nn.Module):
-    def __init__(self, latent_dim, hidden_dims, output_shape):
+    def __init__(self, latent_dim: int, hidden_dims: Iterable[int], output_shape: Tuple[int, ...]):
         super().__init__()
         self.decoder_start_dims = (hidden_dims[0], 2, 2)
         self.input_layer = nn.Linear(latent_dim, reduce(mul, self.decoder_start_dims))

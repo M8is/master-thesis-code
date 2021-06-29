@@ -41,10 +41,10 @@ class MultivariateNormal(Distribution):
 
     def rsample(self, sample_shape: torch.Size = torch.Size([])) -> torch.Tensor:
         mean, std = self.params
-        eps = torch.randn(sample_shape + mean.shape).to(self.device)
+        eps = torch.randn(sample_shape + mean.shape).to(mean.device)
         return mean + eps * std
 
-    def mvd_sample(self, size) -> torch.Tensor:
+    def mvsample(self, size) -> torch.Tensor:
         mean, std = self.params
         mean_samples = self.__mean_samples(mean, std, size)
         std_samples = self.__std_samples(mean, std, size)
@@ -75,43 +75,47 @@ class MultivariateNormal(Distribution):
         return dist.log_prob(value)
 
     def __mean_samples(self, mean, std, sample_size, coupled=False):
-        std_normal = torch.randn((sample_size, *mean.size())).to(self.device)
+        std_normal = torch.randn((sample_size, *mean.size())).to(mean.device)
         std_normal = std_normal.unsqueeze(-2).repeat_interleave(mean.size(-1), dim=-2)
-        pos_weibull = self.__sample_weibull(sample_size, mean.size())
+        pos_weibull = self.__sample_weibull(sample_size, mean.size(), mean.device)
         pos_samples = self.__replace_diagonal(std_normal, pos_weibull)
-        neg_weibull = pos_weibull if coupled else self.__sample_weibull(sample_size, mean.size())
+        neg_weibull = pos_weibull if coupled else self.__sample_weibull(sample_size, mean.size(), mean.device)
         neg_samples = -self.__replace_diagonal(std_normal, neg_weibull)
         samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + samples * std
 
     def __std_samples(self, mean, std, sample_size, coupled=True):
-        std_normal = torch.randn((sample_size, *mean.size())).to(self.device)
+        std_normal = torch.randn((sample_size, *mean.size())).to(mean.device)
         std_normal = std_normal.unsqueeze(-2).repeat_interleave(mean.size(-1), dim=-2)
-        pos_standard_dsmaxwell = self.__sample_standard_doublesided_maxwell(sample_size, std.shape)
+        pos_standard_dsmaxwell = self.__sample_standard_doublesided_maxwell(sample_size, std.shape, std.device)
         pos_samples = self.__replace_diagonal(std_normal, pos_standard_dsmaxwell)
         if coupled:
             neg_std_dsmaxwell = self.__sample_standard_gaussian_from_standard_dsmaxwell(pos_standard_dsmaxwell)
         else:
-            neg_std_dsmaxwell = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(self.device)
+            neg_std_dsmaxwell = torch.randn((sample_size, *mean.size(), mean.size(-1))).to(mean.device)
         neg_samples = self.__replace_diagonal(std_normal, neg_std_dsmaxwell)
         samples = torch.stack((pos_samples, neg_samples)).transpose(-3, -2)
         return mean + std * samples
 
     @staticmethod
-    def __replace_diagonal(target, new_diagonal) -> torch.Tensor:
+    def __replace_diagonal(target: torch.Tensor, new_diagonal: torch.Tensor) -> torch.Tensor:
         mask = 1. - torch.ones_like(new_diagonal).diag_embed()
         return mask * target + new_diagonal.diag_embed()
 
-    def __sample_weibull(self, sample_size, shape):
+    @staticmethod
+    def __sample_weibull(sample_size: int, shape: torch.Size, device: torch.device) -> torch.Tensor:
         weibull = torch.distributions.Weibull(scale=np.sqrt(2.), concentration=2.)
-        return weibull.sample((sample_size, *shape)).to(self.device)
+        return weibull.sample((sample_size, *shape)).to(device)
 
-    def __sample_standard_doublesided_maxwell(self, sample_size, shape):
-        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((sample_size, *shape)).to(self.device)
-        binomial_sample = torch.distributions.Binomial(1, 0.5).sample((sample_size, *shape)).to(self.device)
+    @staticmethod
+    def __sample_standard_doublesided_maxwell(sample_size: int, shape: torch.Size,
+                                              device: torch.device) -> torch.Tensor:
+        gamma_sample = torch.distributions.Gamma(1.5, 0.5).sample((sample_size, *shape)).to(device)
+        binomial_sample = torch.distributions.Binomial(1, 0.5).sample((sample_size, *shape)).to(device)
         return torch.sqrt(gamma_sample) * (2 * binomial_sample - 1)
 
-    def __sample_standard_gaussian_from_standard_dsmaxwell(self, std_dsmaxwell_samples):
+    @staticmethod
+    def __sample_standard_gaussian_from_standard_dsmaxwell(std_dsmaxwell_samples: torch.Tensor) -> torch.Tensor:
         """
         Adapted from https://github.com/deepmind/mc_gradients
         Generate Gaussian variates from Double-sided Maxwell variates.
@@ -129,4 +133,4 @@ class MultivariateNormal(Distribution):
             Tensor of Gaussian variates with the same shape as the input.
         """
         dist = torch.distributions.uniform.Uniform(low=0., high=1.)
-        return dist.sample(std_dsmaxwell_samples.shape).to(self.device) * std_dsmaxwell_samples
+        return dist.sample(std_dsmaxwell_samples.shape).to(std_dsmaxwell_samples.device) * std_dsmaxwell_samples

@@ -3,17 +3,15 @@ from os import path, makedirs
 import torch
 from torchvision.utils import save_image
 
-from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
 from utils.model_factory import get_vae
-from tasks.trainer import Trainer
+from tasks.trainer import StochasticTrainer
 
 
-class TrainVAE(Trainer):
+class TrainVAE(StochasticTrainer):
     def __init__(self, learning_rate: float, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__model = get_vae(estimator=get_estimator(*args, **kwargs), data_dims=self.data_holder.dims, *args,
-                               **kwargs).to(self.device)
+        self.__model = get_vae(data_dims=self.data_holder.dims, *args, **kwargs).to(self.device)
         self.__optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     @property
@@ -34,20 +32,3 @@ class TrainVAE(Trainer):
         # Use no reduction to get separate losses for each image
         binary_cross_entropy = torch.nn.BCELoss(reduction='none')
         return binary_cross_entropy(x_recon, x.expand_as(x_recon)).flatten(start_dim=-n_data_dims).sum(dim=-1)
-
-    def predict(self, samples: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
-        return self.model.decoder(samples)
-
-    def generate_images(self) -> None:
-        output_dir = path.join(self.results_dir, 'images')
-        if path.exists(output_dir):
-            return
-        makedirs(output_dir)
-        with eval_mode(self.model):
-            print(f'Generating images in `{output_dir}`...')
-            n = min(self.data_holder.batch_size, 8)
-            for batch_id, (x_batch, _) in enumerate(self.data_holder.test):
-                x_batch = x_batch[:n].to(self.device)
-                _, x_pred_batch = self.model(x_batch)
-                comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
-                save_image(comparison, path.join(output_dir, f'recon_{batch_id}.png'), nrow=n)

@@ -1,30 +1,33 @@
 import time
 from abc import ABC, abstractmethod
 from os import path
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Iterable
 
 import torch
 import torch.utils.data
 
-from mc_estimators.distributions.distribution_base import Distribution
+from distributions.distribution_base import Distribution
+from models.stochastic_model import StochasticModel
 from utils.data_holder import DataHolder
+from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
 from utils.tensor_holders import TensorHolder
 
 
-class Trainer(ABC):
-    def __init__(self, results_dir: str, epochs: int, mc_estimator: str, device: str = 'cpu',
+class StochasticTrainer(ABC):
+    def __init__(self, results_dir: str, epochs: int, mc_estimator: str, sample_size: int, device: str = 'cpu',
                  compute_variance: bool = False, compute_perf: bool = False, print_interval: int = 100, **kwargs):
         self.results_dir = results_dir
-        self.device = torch.device(device)
+        self.device = device
         self.epochs = epochs
+        self.sample_size = sample_size
         self.data_holder = DataHolder.get(**kwargs)
-        self.estimator = mc_estimator
+        self.estimator = get_estimator(mc_estimator)
         self.compute_variance = compute_variance
         self.compute_perf = compute_perf
         self.print_interval = print_interval
 
-    def train(self):
+    def train(self) -> Iterable[str]:
         train_losses = TensorHolder(self.results_dir, 'train_loss')
         test_losses = TensorHolder(self.results_dir, 'test_loss')
         estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
@@ -50,7 +53,7 @@ class Trainer(ABC):
         test_losses.save()
         estimator_times.save()
         estimator_stds.save()
-        torch.save(self.model, path.join(self.results_dir, f'{self.estimator}_{self.epochs}.pt'))
+        torch.save(self.model, path.join(self.results_dir, f'{self.estimator.name}_{self.epochs}.pt'))
 
         saved_tensors = ['train_loss', 'test_loss']
         if self.compute_perf:
@@ -67,21 +70,21 @@ class Trainer(ABC):
         for batch_id, (x_batch, y_batch) in enumerate(self.data_holder.train):
             x_batch = x_batch.to(self.device)
             y_batch = y_batch.to(self.device)
-            distribution, out = self.model(x_batch)
-            loss = self.loss(x_batch, y_batch, out).mean()
+            distribution = self.model.encode(x_batch)
+            interpretation = self.model.interpret(distribution.sample(), x_batch)
+            loss = self.loss(x_batch, y_batch, interpretation).mean()
             kld = distribution.kl().mean()
             self.optimizer.zero_grad()
             kld.backward(retain_graph=True)
             loss_fn = self.__get_loss_fn(x_batch, y_batch)
-            self.model.probabilistic.backward(distribution, loss_fn)
+            distribution.backward(self.estimator, loss_fn, self.sample_size)
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
             if batch_id % self.print_interval == 0:
                 print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
             if self.compute_variance and batch_id % self.variance_interval == 0:
-                distribution, _ = self.model(x_batch)
-                estimator_stds.append(self.__estimate_std(distribution, loss_fn, n_estimates=500))
+                estimator_stds.append(self.__estimate_std(self.model.encode(x_batch), loss_fn, n_estimates=500))
             train_losses.append(loss + kld)
         return torch.tensor(train_losses), torch.tensor(estimator_stds)
 
@@ -91,7 +94,8 @@ class Trainer(ABC):
             for x_batch, y_batch in self.data_holder.test:
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
-                distribution, x_recons = self.model(x_batch)
+                distribution = self.model.encode(x_batch)
+                x_recons = self.model.interpret(distribution.sample(), x_batch)
                 loss = self.loss(x_batch, y_batch, x_recons).mean()
                 kld = distribution.kl().mean()
                 test_losses.append(loss + kld)
@@ -99,46 +103,39 @@ class Trainer(ABC):
 
     def __estimate_std(self, distribution: Distribution, loss_fn: Callable[[torch.Tensor], torch.Tensor],
                        n_estimates: int) -> torch.Tensor:
-        old_sample_size = self.model.probabilistic.sample_size
-        self.model.probabilistic.sample_size = 1
+        sample_size = 1
         grads = []
         self.optimizer.zero_grad()
         for i in range(n_estimates):
             retain_graph = (i + 1) < n_estimates
             distribution.params.retain_grad()
-            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=retain_graph)
+            distribution.backward(self.estimator, loss_fn, sample_size, retain_graph=retain_graph)
             grads.append(distribution.params.grad)
             self.optimizer.zero_grad()
-        self.model.probabilistic.sample_size = old_sample_size
         return torch.stack(grads).std(dim=0).mean()
 
     def __estimate_time(self, n_estimates: int) -> torch.Tensor:
         self.model.train()
 
-        loss_fn = None
-        distribution = None
-        for (b, y) in self.data_holder.train:
-            x_batch = b.to(self.device)
-            y_batch = y.to(self.device)
-            loss_fn = self.__get_loss_fn(x_batch, y_batch)
-            distribution, _ = self.model(x_batch)
-        assert loss_fn is not None
-        assert distribution is not None
-
-        times = []
-        self.optimizer.zero_grad()
-        for i in range(n_estimates):
-            retain_graph = (i + 1) < n_estimates
-            before = time.process_time()
-            self.model.probabilistic.backward(distribution, loss_fn, retain_graph=retain_graph)
-            after = time.process_time()
-            times.append(after - before)
+        for x, y in self.data_holder.train:
+            x = x.to(self.device)
+            y = y.to(self.device)
+            loss_fn = self.__get_loss_fn(x, y)
+            distribution = self.model.encode(x)
+            times = []
             self.optimizer.zero_grad()
-        times = torch.FloatTensor(times)
-        return torch.stack((times.mean(), times.std()))
+            for i in range(n_estimates):
+                retain_graph = (i + 1) < n_estimates
+                before = time.process_time()
+                distribution.backward(self.estimator, loss_fn, self.sample_size, retain_graph=retain_graph)
+                after = time.process_time()
+                times.append(after - before)
+                self.optimizer.zero_grad()
+            times = torch.FloatTensor(times)
+            return torch.stack((times.mean(), times.std()))
 
-    def __get_loss_fn(self, x, y):
-        return lambda samples: self.loss(x, y, self.predict(samples, x))
+    def __get_loss_fn(self, x: torch.Tensor, y: torch.Tensor) -> Callable[[torch.Tensor], torch.Tensor]:
+        return lambda samples: self.loss(x, y, self.model.interpret(samples, x))
 
     @property
     def variance_interval(self) -> int:
@@ -146,7 +143,7 @@ class Trainer(ABC):
 
     @property
     @abstractmethod
-    def model(self) -> torch.nn.Module:
+    def model(self) -> StochasticModel:
         pass
 
     @property
@@ -156,8 +153,4 @@ class Trainer(ABC):
 
     @abstractmethod
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
-        pass
-
-    @abstractmethod
-    def predict(self, samples: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
         pass

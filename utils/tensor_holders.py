@@ -6,8 +6,9 @@ import torch
 
 
 class TensorHolder:
-    def __init__(self, output_dir: str, file_name: str):
-        self.__file_path = os.path.join(output_dir, f'{file_name}.pkl')
+    def __init__(self, dir_path: str, name: str):
+        self.name = name
+        self.__file_path = os.path.join(dir_path, f'{name}.pkl')
 
         if os.path.exists(self.__file_path):
             with open(self.__file_path, 'rb') as f:
@@ -30,3 +31,9 @@ class TensorHolder:
 
     def is_empty(self) -> bool:
         return len(self.data) == 0
+
+    def __repr__(self):
+        return f'TensorHolder({self.__file_path})'
+
+    def __str__(self):
+        return self.name
