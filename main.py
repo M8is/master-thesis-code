@@ -2,6 +2,7 @@ import argparse
 import shutil
 import subprocess
 from os import path
+from pathlib import Path
 from typing import List, Dict, Any
 
 import yaml
@@ -14,7 +15,7 @@ from utils.seeds import fix_random_seed
 
 
 def main(args):
-    config_path = args.CONFIG
+    config_path = Path(args.CONFIG)
     with open(config_path, 'r') as f:
         meta_config = yaml.safe_load(f)
 
@@ -22,7 +23,7 @@ def main(args):
     runs = meta_config.pop('runs', [{}])
     configs = [{**meta_config, **run_config} for run_config in runs]
 
-    results_base_dir = path.splitext(config_path)[0].replace('config', 'results', 1)
+    results_base_dir = str(config_path.parent / config_path.stem).replace('config', 'results', 1)
 
     if args.clean and path.exists(results_base_dir):
         shutil.rmtree(results_base_dir)
