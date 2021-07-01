@@ -14,7 +14,6 @@ hidden_dims:
 latent_dim: 20
 epochs: 10
 learning_rate: 0.001
-plot_label: '$mc_estimator$ $sample_size$ sample(s)'
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
@@ -24,15 +23,9 @@ runs:
     sample_size: 10
   - mc_estimator: 'Reinforce'
     sample_size: 80
-    compute_variance: True
-    compute_perf: True
   - mc_estimator: 'MVD'
     sample_size: 1
-    compute_variance: True
-    compute_perf: True
   - mc_estimator: 'Pathwise'
     sample_size: 1
   - mc_estimator: 'Pathwise'
     sample_size: 80
-    compute_variance: True
-    compute_perf: True

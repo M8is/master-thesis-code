@@ -13,7 +13,7 @@ init_params:
 epochs: 500  # each iteration is one epoch in this task.
 learning_rate: 0.001
 epoch_print_interval: 100
-plot_label: '$mc_estimator$ $sample_size$ sample(s)'
+iteration_print_interval: null
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'

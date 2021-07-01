@@ -7,10 +7,10 @@ from utils.distribution_factory import get_distribution_type
 
 
 class TrainLogReg(StochasticTrainer):
-    def __init__(self, learning_rate: float, *args, **kwargs):
+    def __init__(self, learning_rate: float, distribution: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         latent_dim = self.data_holder.dims[-1]
-        self.__model = LogisticRegressionClassifier(latent_dim, get_distribution_type(*args, **kwargs)).to(self.device)
+        self.__model = LogisticRegressionClassifier(latent_dim, get_distribution_type(distribution))
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property

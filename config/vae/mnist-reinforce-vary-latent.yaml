@@ -16,7 +16,6 @@ learning_rate: 0.001
 mc_estimator: 'reinforce'
 sample_size: 100
 compute_variance: True
-plot_label: '$latent_dim$ latent dim(s)'
 subpath_keys:
   - 'latent_dim'
 device: 'cuda'

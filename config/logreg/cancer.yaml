@@ -10,7 +10,6 @@ batch_size: 32
 distribution: 'MultivariateNormal'
 epochs: 20
 learning_rate: 0.001
-plot_label: '$mc_estimator$ $sample_size$ sample(s)'
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'

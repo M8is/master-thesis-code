@@ -14,7 +14,6 @@ hidden_dims:
 latent_dim: 128
 epochs: 10
 learning_rate: 0.0005
-plot_label: '$mc_estimator$ $sample_size$ sample(s)'
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'

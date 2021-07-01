@@ -5,9 +5,9 @@ from utils.model_factory import get_vae
 
 
 class TrainVAE(StochasticTrainer):
-    def __init__(self, learning_rate: float, *args, **kwargs):
+    def __init__(self, learning_rate: float, distribution: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__model = get_vae(data_dims=self.data_holder.dims, *args, **kwargs).to(self.device)
+        self.__model = get_vae(data_dims=self.data_holder.dims, distribution=distribution, *args, **kwargs)
         self.__optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     @property

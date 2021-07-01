@@ -14,7 +14,7 @@ class TrainPolynomial(StochasticTrainer):
                  **kwargs):
         super().__init__(*args, dataset='empty', batch_size=kwargs.get('batch_size', 0),
                          print_interval=kwargs.get('print_interval', float('inf')), **kwargs)
-        self.__model = PureProbDistModel(get_distribution_type(distribution), init_params).to(self.device)
+        self.__model = PureProbDistModel(get_distribution_type(distribution), init_params)
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property
