@@ -16,7 +16,7 @@ from utils.tensor_holders import TensorHolder
 
 class StochasticTrainer(ABC):
     def __init__(self, results_dir: str, epochs: int, mc_estimator: str, sample_size: int, device: str = 'cpu',
-                 compute_variance: bool = False, compute_perf: bool = False,
+                 compute_variance: bool = False, compute_perf: bool = False, optimize_kld: bool = True,
                  iteration_print_interval: Optional[int] = 100, epoch_print_interval: Optional[int] = 1,
                  save_model_interval: Optional[int] = None, **kwargs):
         self.results_dir = results_dir
@@ -27,6 +27,7 @@ class StochasticTrainer(ABC):
         self.gradient_estimator = get_estimator(mc_estimator)
         self.compute_variance = compute_variance
         self.compute_perf = compute_perf
+        self.optimize_kld = optimize_kld
         self.epoch_print_interval = epoch_print_interval
         self.iteration_print_interval = iteration_print_interval
         self.save_model_interval = save_model_interval
@@ -44,21 +45,18 @@ class StochasticTrainer(ABC):
         model_path = Path(self.results_dir) / f'{self.gradient_estimator.name}_0.pt'
         model_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(self.model, model_path)
-        print(f"Saved model to '{model_path}'.")
         for epoch in range(1, self.epochs + 1):
             self.__train_epoch()
             self.__test_epoch()
+            if epoch == self.epochs or (self.save_model_interval and epoch % self.save_model_interval == 0):
+                model_path = Path(self.results_dir) / f'{self.gradient_estimator.name}_{epoch}.pt'
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                torch.save(self.model, model_path)
             if self.epoch_print_interval and (epoch % self.epoch_print_interval == 0 or epoch == self.epochs):
                 print(f"Epoch: {epoch}/{self.epochs}, Train loss: {self.train_losses.data.numpy()[-1].mean():.2f}, "
                       f"Test loss: {self.test_losses.data.numpy()[-1].mean():.2f}",
                       flush=True)
                 print(60 * "-")
-
-            if self.save_model_interval and (epoch % self.save_model_interval == 0 or epoch == self.epochs):
-                model_path = Path(self.results_dir) / f'{self.gradient_estimator.name}_{epoch}.pt'
-                model_path.parent.mkdir(parents=True, exist_ok=True)
-                torch.save(self.model, model_path)
-                print(f"Saved model to '{model_path}'.")
 
         self.train_losses.save()
         self.test_losses.save()
@@ -81,16 +79,20 @@ class StochasticTrainer(ABC):
             distribution = self.model.encode(x_batch)
             interpretation = self.model.interpret(distribution.sample(), x_batch)
             loss = self.loss(x_batch, y_batch, interpretation).mean()
-            kld = distribution.kl().mean()
             self.optimizer.zero_grad()
-            kld.backward(retain_graph=True)
+            if self.optimize_kld:
+                kld = distribution.kl().mean()
+                kld.backward(retain_graph=True)
+            else:
+                kld = 0
             loss_fn = self.__get_loss_fn(x_batch, y_batch)
             distribution.backward(self.gradient_estimator, loss_fn, self.sample_size)
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
             if self.iteration_print_interval and batch_id % self.iteration_print_interval == 0:
-                print(f"\r| ELBO: {-(loss + kld):.2f} | BCE loss: {loss:.1f} | KL Divergence: {kld:.1f} |")
+                elbo_prefix = f"| ELBO: {-(loss + kld):.2f} " if self.optimize_kld else ''
+                print(f"{elbo_prefix}| Loss: {loss:.1f} | KLD: {kld:.1f} |")
             if self.compute_variance and batch_id % self.variance_interval == 0:
                 self.estimator_stds.add(self.__estimate_std(self.model.encode(x_batch), loss_fn, n_estimates=500))
             self.train_losses.add(loss + kld)
@@ -104,7 +106,7 @@ class StochasticTrainer(ABC):
                 distribution = self.model.encode(x_batch)
                 x_recons = self.model.interpret(distribution.sample(), x_batch)
                 loss = self.loss(x_batch, y_batch, x_recons).mean()
-                kld = distribution.kl().mean()
+                kld = distribution.kl().mean() if self.optimize_kld else 0
                 test_losses.append(loss + kld)
             self.test_losses.add(torch.tensor(test_losses).mean())
 

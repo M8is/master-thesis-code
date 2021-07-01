@@ -1,19 +1,16 @@
 task: 'polynomial'
 seeds:
-  - 2930489
-  - 7489326
-  - 3648397
-  - 1286498
   - 9074185
 distribution: 'normal'
 latent_dim: 1
 init_params:
   - 0
   - 0
-epochs: 500  # each iteration is one epoch in this task.
-learning_rate: 0.001
-epoch_print_interval: 100
+epochs: 5  # each iteration is one epoch in this task.
+learning_rate: 0.1
+epoch_print_interval: null
 iteration_print_interval: null
+save_model_interval: 1
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
