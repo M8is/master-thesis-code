@@ -5,7 +5,7 @@ import torch
 
 
 class Distribution(ABC):
-    def __init__(self, raw_params):
+    def __init__(self, raw_params, *args, **kwargs):
         self.params = self._as_params(raw_params)
 
     def backward(self, gradient_estimator, loss_fn: Callable[[torch.Tensor], torch.Tensor],

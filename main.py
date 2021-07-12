@@ -43,7 +43,7 @@ def training(configs: List[Dict[str, Any]], results_base_dir: str):
             if meta_exists(results_dir):
                 print(f"Skipping training; meta file already exists in '{results_dir}'.")
             else:
-                print(f"=== Training {i * len(seeds) + j}/{len(seeds) * len(configs)} ===")
+                print(f"=== Training {i * len(seeds) + j + 1}/{len(seeds) * len(configs)} ===")
                 config['seed'] = seed
                 fix_random_seed(seed)
                 task = config['task']

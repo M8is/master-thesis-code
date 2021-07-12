@@ -1,13 +1,26 @@
+from enum import Enum
+from typing import Any, Callable
+
 import torch
 import torch.nn.functional as F
 
 from .distribution_base import Distribution
 
 
+class CategoricalDomain(Enum):
+    INTEGER = 1
+    ZERO_ONE = 2
+
+
 class Categorical(Distribution):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, domain: int = 1, **kwargs):
         super().__init__(*args, **kwargs)
         self.warned = False
+
+        if CategoricalDomain(domain) == CategoricalDomain.ZERO_ONE:
+            self.sample = self.with_normalized_outputs(self.sample)
+            self.rsample = self.with_normalized_outputs(self.rsample)
+            self.mvsample = self.with_normalized_outputs(self.mvsample)
 
     def _as_params(self, raw_params):
         return torch.softmax(raw_params.squeeze(), -1).unsqueeze(0)
@@ -16,13 +29,14 @@ class Categorical(Distribution):
         return torch.distributions.Categorical(self.params).sample(sample_shape)
 
     def rsample(self, sample_shape: torch.Size = torch.Size([])):
-        return self.__as_index(F.gumbel_softmax(torch.log(self.params), hard=True))
+        return self.__as_index(F.gumbel_softmax(torch.log(self.params).expand((*sample_shape, *self.params.shape)),
+                                                hard=True))
 
     def mvsample(self, size):
         if size > 1 and not self.warned:
             print("[WARNING] Categorical MVD ignores sample sizes greater than one.")
             self.warned = True
-        return torch.arange(self.params.size(-1), device=self.params.device).unsqueeze(0)
+        return torch.arange(self.params.size()[-1], device=self.params.device).unsqueeze(0)
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():
@@ -44,6 +58,9 @@ class Categorical(Distribution):
 
     def log_prob(self, value):
         return torch.distributions.Categorical(self.params).log_prob(value)
+
+    def with_normalized_outputs(self, f: Callable[[Any], torch.Tensor]) -> Callable[[Any], torch.Tensor]:
+        return lambda *args, **kwargs: f(*args, **kwargs) / self.params.size()[-1]
 
     @staticmethod
     def __as_index(one_hot_encoding: torch.Tensor) -> torch.Tensor:

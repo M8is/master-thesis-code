@@ -1,24 +1,26 @@
 task: 'polynomial'
 seeds:
   - 9074185
-distribution: 'normal'
+distribution: 'categorical'
 latent_dim: 1
 init_params:
-  - 0
-  - 0
-epochs: 5  # each iteration is one epoch in this task.
+  - 1
+polynomial: 'quadratic'
+repeat_params: 100
+domain: 2  # categorical output between 0 and 1.
+epochs: 10000  # each iteration is one epoch in this task.
 learning_rate: 0.1
 epoch_print_interval: null
 iteration_print_interval: null
-save_model_interval: 1
+save_model_interval: 2000
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 2
+    sample_size: 1000
   - mc_estimator: 'MVD'
     sample_size: 1
   - mc_estimator: 'Pathwise'
-    sample_size: 2
+    sample_size: 100

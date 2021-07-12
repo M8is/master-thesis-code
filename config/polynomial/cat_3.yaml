@@ -1,0 +1,26 @@
+task: 'polynomial'
+seeds:
+  - 9074185
+distribution: 'categorical'
+latent_dim: 1
+init_params:
+  - 1
+  - 1
+  - 1
+polynomial: 'quadratic_flat'
+epochs: 100  # each iteration is one epoch in this task.
+learning_rate: 0.1
+epoch_print_interval: null
+iteration_print_interval: null
+save_model_interval: 20
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
+device: 'cuda'
+runs:
+  - mc_estimator: 'Reinforce'
+    sample_size: 3
+  - mc_estimator: 'MVD'
+    sample_size: 1
+  - mc_estimator: 'Pathwise'
+    sample_size: 3
