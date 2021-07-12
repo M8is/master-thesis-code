@@ -18,14 +18,18 @@ subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
 device: 'cuda'
+compute_perf: true
 runs:
   - mc_estimator: 'Reinforce'
     sample_size: 10
   - mc_estimator: 'Reinforce'
     sample_size: 80
+    compute_variance: true
   - mc_estimator: 'MVD'
     sample_size: 1
+    compute_variance: true
   - mc_estimator: 'Pathwise'
     sample_size: 1
   - mc_estimator: 'Pathwise'
     sample_size: 80
+    compute_variance: true

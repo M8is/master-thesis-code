@@ -10,11 +10,12 @@ from utils.distribution_factory import get_distribution_type
 
 
 class TrainPolynomial(StochasticTrainer):
-    def __init__(self, learning_rate: float, distribution: str, init_params: List[float], *args,
-                 **kwargs):
+    def __init__(self, learning_rate: float, distribution: str, init_params: List[float], repeat_params: bool = 0,
+                 *args, **kwargs):
         super().__init__(*args, dataset='empty', batch_size=kwargs.get('batch_size', 0), optimize_kld=False,
                          print_interval=kwargs.get('print_interval', float('inf')), **kwargs)
-        self.__model = PureProbDistModel(get_distribution_type(distribution), init_params)
+
+        self.__model = PureProbDistModel(get_distribution_type(distribution), repeat_params * init_params)
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property
@@ -30,5 +31,5 @@ class TrainPolynomial(StochasticTrainer):
 
     @staticmethod
     def polynomial(x: torch.Tensor) -> torch.Tensor:
-        y = (x - .5) ** 2
-        return y.squeeze(-1)
+        y = 0.25 * (x - 1.) ** 2
+        return y.float().squeeze(-1)

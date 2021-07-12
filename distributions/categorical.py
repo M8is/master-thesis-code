@@ -5,6 +5,10 @@ from .distribution_base import Distribution
 
 
 class Categorical(Distribution):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.warned = False
+
     def _as_params(self, raw_params):
         return torch.softmax(raw_params.squeeze(), -1).unsqueeze(0)
 
@@ -12,25 +16,26 @@ class Categorical(Distribution):
         return torch.distributions.Categorical(self.params).sample(sample_shape)
 
     def rsample(self, sample_shape: torch.Size = torch.Size([])):
-        # TODO: test this
-        return torch.argmax(F.gumbel_softmax(torch.log(self.params)))
+        return self.__as_index(F.gumbel_softmax(torch.log(self.params), hard=True))
 
     def mvsample(self, size):
-        if size > 1:
-            print("Warning: Categorical MVD ignores sample sizes greater than one.")
-        return torch.arange(self.params.size(-1), device=self.params.device)
+        if size > 1 and not self.warned:
+            print("[WARNING] Categorical MVD ignores sample sizes greater than one.")
+            self.warned = True
+        return torch.arange(self.params.size(-1), device=self.params.device).unsqueeze(0)
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():
-            while losses.shape != self.params.shape and len(losses.shape) > len(self.params.shape):
-                losses = losses.mean(dim=-1)
-            grad = losses - losses[:, -1]
-        assert grad.shape == self.params.shape, f"Grad shape {grad.shape} != params shape {self.params.shape}"
-        self.params.backward(grad, retain_graph=retain_graph)
+            repeated = losses.repeat_interleave(losses.size()[-1], dim=-2)
+            diag = losses.diag_embed()
+            grad = (2 * diag - repeated).sum(dim=-1)
+        params = self.params.mean(dim=0, keepdim=True)
+        assert grad.shape == params.shape, f"Grad shape {grad.shape} != params shape {params.shape}"
+        params.backward(grad, retain_graph=retain_graph)
 
     def pdf(self):
-        x = torch.tensor(range(self.params.size(-1)))
-        return x, self.params.squeeze(0)
+        x = torch.arange(self.params.size(-1))
+        return x, self.params.detach().squeeze(0)
 
     def kl(self):
         p = torch.distributions.Categorical(self.params)
@@ -39,3 +44,8 @@ class Categorical(Distribution):
 
     def log_prob(self, value):
         return torch.distributions.Categorical(self.params).log_prob(value)
+
+    @staticmethod
+    def __as_index(one_hot_encoding: torch.Tensor) -> torch.Tensor:
+        arange = torch.arange(one_hot_encoding.size()[-1], device=one_hot_encoding.device)
+        return (one_hot_encoding * arange).sum(dim=-1)

@@ -28,13 +28,13 @@ def load_meta_infos(base_dir: str) -> Iterable[Dict[str, Any]]:
     return metas
 
 
-def filter_by(dicts: Iterable[Dict[str, Any]], **filters: str) -> Iterable[Dict[str, Any]]:
-    return [d for d in dicts if all(str(d[k].lower()) == v.lower() for k, v in filters.items())]
+def filter_by(dicts: Iterable[Dict[str, Any]], **filters: Any) -> Iterable[Dict[str, Any]]:
+    return [d for d in dicts if all(str(d.get(k, '').lower()) == str(v).lower() for k, v in filters.items())]
 
 
 def collect_by(dicts: Iterable[Dict[str, Any]], *keys: str) -> Dict[str, Iterable[Dict[str, Any]]]:
     result = defaultdict(list)
     for d in dicts:
-        result[','.join((str(d[k]) for k in keys))].append(d)
+        result[','.join((str(d.get(k, '')) for k in keys))].append(d)
     result.default_factory = None
     return result

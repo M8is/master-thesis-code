@@ -11,6 +11,7 @@ from models.stochastic_model import StochasticModel
 from utils.data_holder import DataHolder
 from utils.estimator_factory import get_estimator
 from utils.eval_util import eval_mode
+from utils.stopwatch import Stopwatch
 from utils.tensor_holders import TensorHolder
 
 
@@ -24,32 +25,34 @@ class StochasticTrainer(ABC):
         self.epochs = epochs
         self.sample_size = sample_size
         self.data_holder = DataHolder.get(**kwargs)
-        self.gradient_estimator = get_estimator(mc_estimator)
+        self.gradient_estimator = get_estimator(mc_estimator, **kwargs)
         self.compute_variance = compute_variance
         self.compute_perf = compute_perf
         self.optimize_kld = optimize_kld
         self.epoch_print_interval = epoch_print_interval
         self.iteration_print_interval = iteration_print_interval
         self.save_model_interval = save_model_interval
+        self.stopwatch = Stopwatch()
 
-        self.train_losses = TensorHolder(self.results_dir, 'train_loss', add_timestamps=True)
-        self.test_losses = TensorHolder(self.results_dir, 'test_loss', add_timestamps=True)
+        self.train_losses = TensorHolder(self.results_dir, 'train_loss')
+        self.test_losses = TensorHolder(self.results_dir, 'test_loss')
         if self.compute_variance:
             self.estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
         if self.compute_perf:
-            self.estimator_times = TensorHolder(self.results_dir, 'estimator_times')
+            self.estimator_times = TensorHolder(self.results_dir, 'gradient_calculation_times')
+            self.iteration_times = TensorHolder(self.results_dir, 'iteration_times')
 
     def train(self) -> Iterable[str]:
         print(f'Training with {self.gradient_estimator}.')
         self.model.to(self.device)
-        model_path = Path(self.results_dir) / f'{self.gradient_estimator.name}_0.pt'
+        model_path = Path(self.results_dir) / f'{self.gradient_estimator.name()}_0.pt'
         model_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(self.model, model_path)
         for epoch in range(1, self.epochs + 1):
             self.__train_epoch()
             self.__test_epoch()
             if epoch == self.epochs or (self.save_model_interval and epoch % self.save_model_interval == 0):
-                model_path = Path(self.results_dir) / f'{self.gradient_estimator.name}_{epoch}.pt'
+                model_path = Path(self.results_dir) / f'{self.gradient_estimator.name()}_{epoch}.pt'
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 torch.save(self.model, model_path)
             if self.epoch_print_interval and (epoch % self.epoch_print_interval == 0 or epoch == self.epochs):
@@ -60,15 +63,17 @@ class StochasticTrainer(ABC):
 
         self.train_losses.save()
         self.test_losses.save()
-        saved_metrics = ['train_loss', 'test_loss']
+        saved_metrics = [self.train_losses.name, self.test_losses.name]
         if self.compute_perf:
             print(f'Estimating performance of {self.gradient_estimator} ...')
             self.estimator_times.add(self.__estimate_time(n_estimates=10000))
             self.estimator_times.save()
-            saved_metrics.append('estimator_times')
+            saved_metrics.append(self.estimator_times.name)
+            self.iteration_times.save()
+            saved_metrics.append(self.iteration_times.name)
         if self.compute_variance:
             self.estimator_stds.save()
-            saved_metrics.append('estimators_stds')
+            saved_metrics.append(self.estimator_stds.name)
         return saved_metrics
 
     def __train_epoch(self) -> None:
@@ -86,10 +91,14 @@ class StochasticTrainer(ABC):
             else:
                 kld = 0
             loss_fn = self.__get_loss_fn(x_batch, y_batch)
+            self.stopwatch.resume()
             distribution.backward(self.gradient_estimator, loss_fn, self.sample_size)
+            iteration_time = self.stopwatch.pause()
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
+            if self.compute_perf:
+                self.iteration_times.add(torch.tensor(iteration_time))
             if self.iteration_print_interval and batch_id % self.iteration_print_interval == 0:
                 elbo_prefix = f"| ELBO: {-(loss + kld):.2f} " if self.optimize_kld else ''
                 print(f"{elbo_prefix}| Loss: {loss:.1f} | KLD: {kld:.1f} |")
@@ -112,6 +121,7 @@ class StochasticTrainer(ABC):
 
     def __estimate_std(self, distribution: Distribution, loss_fn: Callable[[torch.Tensor], torch.Tensor],
                        n_estimates: int) -> torch.Tensor:
+        self.gradient_estimator.freeze()
         sample_size = 1
         grads = []
         self.optimizer.zero_grad()
@@ -121,6 +131,7 @@ class StochasticTrainer(ABC):
             distribution.backward(self.gradient_estimator, loss_fn, sample_size, retain_graph=retain_graph)
             grads.append(distribution.params.grad)
             self.optimizer.zero_grad()
+        self.gradient_estimator.unfreeze()
         return torch.stack(grads).std(dim=0).mean()
 
     def __estimate_time(self, n_estimates: int) -> torch.Tensor:

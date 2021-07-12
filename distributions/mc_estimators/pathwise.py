@@ -2,8 +2,8 @@ from .estimator_base import MCEstimator
 
 
 class PathwiseEstimator(MCEstimator):
-    @property
-    def name(self) -> str:
+    @staticmethod
+    def name() -> str:
         return 'pathwise'
 
     def backward(self, distribution, loss_fn, sample_size, retain_graph):

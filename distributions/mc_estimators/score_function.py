@@ -4,8 +4,8 @@ from .estimator_base import MCEstimator
 class SFEstimator(MCEstimator):
     __LOSS_AVG_KEY = '__loss_avg'
 
-    @property
-    def name(self) -> str:
+    @staticmethod
+    def name() -> str:
         return 'score-function'
 
     def backward(self, distribution, loss_fn, sample_size, retain_graph):
@@ -17,5 +17,6 @@ class SFEstimator(MCEstimator):
 
     def __get_baseline(self, losses):
         baseline = getattr(self, self.__LOSS_AVG_KEY, 0)
-        setattr(self, self.__LOSS_AVG_KEY, .9 * baseline + .1 * losses.mean())
+        if not self._frozen:
+            setattr(self, self.__LOSS_AVG_KEY, .9 * baseline + .1 * losses.mean())
         return baseline

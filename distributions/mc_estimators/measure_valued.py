@@ -2,8 +2,8 @@ from .estimator_base import MCEstimator
 
 
 class MVEstimator(MCEstimator):
-    @property
-    def name(self) -> str:
+    @staticmethod
+    def name() -> str:
         return 'measure-valued'
 
     def backward(self, distribution, loss_fn, sample_size, retain_graph):
