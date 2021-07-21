@@ -1,27 +1,24 @@
 from collections import defaultdict
-from os import path
 from pathlib import Path
 from typing import Any, Dict, Iterable
 
 import yaml
 
 __META_FILE_NAME = 'meta.yaml'
-__PATH_KEY = 'path'
 
 
-def meta_exists(dir_path: str) -> bool:
-    return path.exists(path.join(dir_path, __META_FILE_NAME))
+def meta_exists(dir_path: Path) -> bool:
+    return (dir_path / __META_FILE_NAME).exists()
 
 
-def save_meta_info(meta: Dict[str, Any], dir_path: str):
-    meta[__PATH_KEY] = dir_path
-    with open(path.join(dir_path, __META_FILE_NAME), 'w+') as f:
+def save_meta_info(meta: Dict[str, Any]):
+    with open(Path(meta['results_dir']) / __META_FILE_NAME, 'w+') as f:
         yaml.safe_dump(meta, f)
 
 
-def load_meta_infos(base_dir: str) -> Iterable[Dict[str, Any]]:
+def load_meta_infos(base_dir: Path) -> Iterable[Dict[str, Any]]:
     metas = []
-    for file_path in Path(base_dir).rglob(__META_FILE_NAME):
+    for file_path in base_dir.rglob(__META_FILE_NAME):
         with open(file_path) as f:
             meta = yaml.safe_load(f)
         metas.append(meta)

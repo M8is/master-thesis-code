@@ -21,46 +21,40 @@ def main(args):
     runs = meta_config.pop('runs', [{}])
     configs = [{**meta_config, **run_config} for run_config in runs]
 
-    results_base_dir = str(config_path.parent / config_path.stem).replace('config', 'results', 1)
+    results_base_dir = Path(str(config_path.parent / config_path.stem).replace('config', 'results', 1))
 
-    if args.clean and path.exists(results_base_dir):
-        shutil.rmtree(results_base_dir)
-        print(f"Cleaned '{results_base_dir}'.")
-
-    training(configs, results_base_dir)
-
-
-def training(configs: List[Dict[str, Any]], results_base_dir: str):
     git_revision = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf-8')
     for i, config in enumerate(configs):
         config['revision'] = git_revision
-        results_subpath = path.join(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
+        results_subpath = Path(results_base_dir, *[str(config[key]) for key in config['subpath_keys']])
         seeds = config.pop('seeds') if 'seeds' in config else [config['seed']]
         for j, seed in enumerate(seeds):
-            results_dir = path.join(results_subpath, str(seed))
+            results_dir = results_subpath / str(seed)
             if meta_exists(results_dir):
                 print(f"Skipping training; meta file already exists in '{results_dir}'.")
             else:
                 print(f"=== Training {i * len(seeds) + j + 1}/{len(seeds) * len(configs)} ===")
                 config['seed'] = seed
-                fix_random_seed(seed)
-                task = config['task']
-                # TODO: add StochasticTrainer.get(task: str)
-                if task == 'vae':
-                    saved_metrics = TrainVAE(**config, results_dir=results_dir).train()
-                elif task == 'logreg':
-                    saved_metrics = TrainLogReg(**config, results_dir=results_dir).train()
-                elif task == 'polynomial':
-                    saved_metrics = TrainPolynomial(**config, results_dir=results_dir).train()
-                else:
-                    raise ValueError(f"Unknown task '{task}'.")
-                config['saved_metrics'] = saved_metrics
-                save_meta_info(config, results_dir)
+                config['results_dir'] = str(results_dir)
+                train(config)
+
+
+def train(config: Dict[str, Any]):
+    fix_random_seed(config['seed'])
+    task = config['task']
+    if task == 'vae':
+        saved_metrics = TrainVAE(**config).train()
+    elif task == 'logreg':
+        saved_metrics = TrainLogReg(**config).train()
+    elif task == 'polynomial':
+        saved_metrics = TrainPolynomial(**config).train()
+    else:
+        raise ValueError(f"Unknown task '{task}'.")
+    config['saved_metrics'] = saved_metrics
+    save_meta_info(config)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Probabilistic Gradient Estimators')
     parser.add_argument('CONFIG', help='Path to config file')
-    parser.add_argument('--clean', action='store_true',
-                        help='WARNING: deletes the config directory and starts a clean run')
     main(parser.parse_args())
