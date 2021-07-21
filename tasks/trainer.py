@@ -39,7 +39,6 @@ class StochasticTrainer(ABC):
         if self.compute_variance:
             self.estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
         if self.compute_perf:
-            self.estimator_times = TensorHolder(self.results_dir, 'gradient_calculation_times')
             self.iteration_times = TensorHolder(self.results_dir, 'iteration_times')
 
     def train(self) -> Iterable[str]:
@@ -65,10 +64,6 @@ class StochasticTrainer(ABC):
         self.test_losses.save()
         saved_metrics = [self.train_losses.name, self.test_losses.name]
         if self.compute_perf:
-            print(f'Estimating performance of {self.gradient_estimator} ...')
-            self.estimator_times.add(self.__estimate_time(n_estimates=10000))
-            self.estimator_times.save()
-            saved_metrics.append(self.estimator_times.name)
             self.iteration_times.save()
             saved_metrics.append(self.iteration_times.name)
         if self.compute_variance:

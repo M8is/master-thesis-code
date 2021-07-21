@@ -2,6 +2,10 @@ task: 'vae'
 vae_type: 'conv2d'
 seeds:
   - 85690467
+  - 48913749
+  - 21273846
+  - 98467387
+  - 18874392
 dataset: 'Omniglot'
 batch_size: 144
 distribution: 'MultivariateNormal'
@@ -9,7 +13,6 @@ hidden_dims:
   - 32
   - 64
   - 128
-  - 256
 latent_dim: 128
 epochs: 20
 learning_rate: 0.0001
@@ -21,8 +24,8 @@ subpath_keys:
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 80
+    sample_size: 256
   - mc_estimator: 'MVD'
     sample_size: 1
   - mc_estimator: 'Pathwise'
-    sample_size: 1
+    sample_size: 256
