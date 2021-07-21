@@ -1,9 +1,7 @@
 import argparse
-import shutil
 import subprocess
-from os import path
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 import yaml
 

@@ -11,7 +11,7 @@ def plot(means: np.array, stds: np.array, label: str, meta: Dict[str, Any], xspa
     plot_label = __parse_label(label, meta)
     plt.plot(xspace, means, label=plot_label, linewidth=.5)
     if stds is not None:
-        plt.fill_between(xspace, means - stds, means + stds, alpha=.3)
+        plt.fill_between(xspace, means - stds, means + stds, alpha=.1)
 
 
 def legend() -> None:
