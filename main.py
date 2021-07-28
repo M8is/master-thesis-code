@@ -31,7 +31,7 @@ def main(args):
                 config['seed'] = seed
                 config['results_dir'] = str(results_dir)
                 config['revision'] = git_revision
-                new_configs.append(config)
+                new_configs.append(dict(config))
             else:
                 print(f"Skipping '{results_dir}'; meta file already exists.")
 
