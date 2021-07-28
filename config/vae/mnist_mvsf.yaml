@@ -19,7 +19,7 @@ subpath_keys:
   - 'mc_estimator'
   - 'mv_dims'
 device: 'cuda'
-compute_variance: true
+variance_interval: 20
 runs:
   - mc_estimator: 'MVSF'
     mv_dims: 5

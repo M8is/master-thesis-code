@@ -11,10 +11,6 @@ class TrainVAE(StochasticTrainer):
         self.__optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     @property
-    def variance_interval(self) -> int:
-        return 20
-
-    @property
     def model(self) -> torch.nn.Module:
         return self.__model
 

@@ -9,8 +9,6 @@ init_params:
 polynomial: 'quadratic_flat'
 epochs: 5  # each iteration is one epoch in this task.
 learning_rate: 0.1
-epoch_print_interval: null
-iteration_print_interval: null
 save_model_interval: 1
 subpath_keys:
   - 'mc_estimator'

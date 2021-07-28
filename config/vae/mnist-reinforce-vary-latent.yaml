@@ -15,7 +15,7 @@ epochs: 10
 learning_rate: 0.001
 mc_estimator: 'reinforce'
 sample_size: 100
-compute_variance: True
+variance_interval: 20
 subpath_keys:
   - 'latent_dim'
 device: 'cuda'

@@ -29,6 +29,14 @@ class TrainPolynomial(StochasticTrainer):
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         return self.polynomial(outputs).float().squeeze(-1)
 
+    def post_epoch(self, epoch: int) -> None:
+        # Override removes info logging
+        pass
+
+    def post_iteration(self, batch_id: int, loss: torch.Tensor, kld: torch.Tensor) -> None:
+        # Override removes info logging
+        pass
+
     @staticmethod
     def quadratic(x: torch.Tensor) -> torch.Tensor:
         return (x - .5) ** 2

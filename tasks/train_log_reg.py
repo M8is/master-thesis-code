@@ -4,6 +4,8 @@ import torch.utils.data
 from models.logistic_regression import LogisticRegressionClassifier
 from tasks.trainer import StochasticTrainer
 from utils.distribution_factory import get_distribution_type
+from utils.eval_util import eval_mode
+from utils.tensor_holders import TensorHolder
 
 
 class TrainLogReg(StochasticTrainer):
@@ -12,10 +14,8 @@ class TrainLogReg(StochasticTrainer):
         latent_dim = self.data_holder.dims[-1]
         self.__model = LogisticRegressionClassifier(latent_dim, get_distribution_type(distribution))
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
-
-    @property
-    def variance_interval(self) -> int:
-        return 5
+        self.test_accuracies = TensorHolder(self.results_dir, 'test_accuracies')
+        self.saved_metrics.add(self.test_accuracies.name)
 
     @property
     def model(self) -> torch.nn.Module:
@@ -27,6 +27,19 @@ class TrainLogReg(StochasticTrainer):
 
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         y, y_pred = labels.double(), outputs
-        # Use no reduction to get separate losses for each image
-        binary_cross_entropy = torch.nn.BCELoss(reduction='none')
-        return binary_cross_entropy(y_pred, y.expand_as(y_pred))
+        # Use no reduction to get separate losses for each input
+        bce = torch.nn.BCELoss(reduction='none')
+        return bce(y_pred, y.expand_as(y_pred))
+
+    def post_epoch(self, epoch: int) -> None:
+        super().post_epoch(epoch)
+        self.__save_test_accuracy()
+
+    def __save_test_accuracy(self):
+        with eval_mode(self.model):
+            matches = []
+            for x, y_true in self.data_holder.test:
+                y_true = y_true.to(self.device)
+                y_pred = self.model(x.to(self.device))
+                matches.append(torch.eq(y_true, y_pred))
+        self.test_accuracies.add(torch.cat(matches).float().mean())

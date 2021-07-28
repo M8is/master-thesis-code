@@ -10,8 +10,6 @@ polynomial: 'quadratic'
 domain: 2  # categorical output between 0 and 1.
 epochs: 10000  # each iteration is one epoch in this task.
 learning_rate: 0.1
-epoch_print_interval: null
-iteration_print_interval: null
 save_model_interval: 2000
 subpath_keys:
   - 'mc_estimator'
