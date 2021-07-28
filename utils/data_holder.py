@@ -1,10 +1,12 @@
+import os.path
 from abc import ABC, abstractmethod
 from typing import List
 
+import numpy as np
 import sklearn.datasets
 import sklearn.model_selection
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from torchvision import datasets, transforms
 
 
@@ -197,3 +199,54 @@ def batch_iterator(batch_size, x, y):
     assert x.shape[0] == y.shape[0]
     for i in range(0, len(x), batch_size):
         yield x[i:i + batch_size], y[i:i + batch_size]
+
+
+@DataHolder.register_dataset('ecg5000')
+class ECG5000(DataHolder):
+    NAME = 'ECG5000'
+
+    @property
+    def dims(self):
+        return 1,  # TODO
+
+    @staticmethod
+    def _load(batch_size, shuffle=True, *args, **kwargs):
+        loader_args = dict()
+        if 'device' in kwargs:
+            loader_args['pin_memory'] = 'cuda' in kwargs['device']
+        if 'num_workers' in kwargs:
+            loader_args['num_workers'] = kwargs['num_workers']
+
+        dataset = 'ECG5000'
+        ratio_train = 0.8
+        datadir = os.path.join(DataHolder.DATA_ROOT, dataset, dataset)
+        data_train = np.loadtxt(datadir + '_TRAIN', delimiter=',')
+        data_test_val = np.loadtxt(datadir + '_TEST', delimiter=',')[:-1]
+        data = np.concatenate((data_train, data_test_val), axis=0)
+        data = np.expand_dims(data, -1)
+
+        N, D, _ = data.shape
+
+        ind_cut = int(ratio_train * N)
+        ind = np.random.permutation(N)
+        X_train, X_val, y_train, y_val = \
+            data[ind[:ind_cut], 1:, :], data[ind[ind_cut:], 1:, :], data[ind[:ind_cut], 0, :], data[ind[ind_cut:], 0, :]
+
+        train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(y_train))
+        test_dataset = TensorDataset(torch.FloatTensor(X_val), torch.FloatTensor(y_val))
+
+        train_holder = DataLoader(
+            dataset=train_dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=True,
+            **loader_args)
+
+        test_holder = DataLoader(
+            dataset=test_dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=True,
+            **loader_args)
+
+        return lambda: train_holder, lambda: test_holder

@@ -8,6 +8,7 @@ import yaml
 from tasks.train_log_reg import TrainLogReg
 from tasks.train_polynomial import TrainPolynomial
 from tasks.train_vae import TrainVAE
+from tasks.train_vae_rnn import TrainVAERNN
 from utils.meta_util import save_meta_info, meta_exists
 from utils.seeds import fix_random_seed
 
@@ -44,6 +45,8 @@ def train(config: Dict[str, Any]):
     task = config['task']
     if task == 'vae':
         saved_metrics = TrainVAE(**config).train()
+    elif task == 'vaernn':
+        saved_metrics = TrainVAERNN(**config).train()
     elif task == 'logreg':
         saved_metrics = TrainLogReg(**config).train()
     elif task == 'polynomial':
