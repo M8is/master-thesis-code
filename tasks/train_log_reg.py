@@ -15,7 +15,7 @@ class TrainLogReg(StochasticTrainer):
         self.__model = LogisticRegressionClassifier(latent_dim, get_distribution_type(distribution))
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         self.test_accuracies = TensorHolder(self.results_dir, 'test_accuracies')
-        self.saved_metrics.add(self.test_accuracies.name)
+        self.metrics.add(self.test_accuracies)
 
     @property
     def model(self) -> torch.nn.Module:
@@ -33,9 +33,9 @@ class TrainLogReg(StochasticTrainer):
 
     def post_epoch(self, epoch: int) -> None:
         super().post_epoch(epoch)
-        self.__save_test_accuracy()
+        self.__add_test_accuracy()
 
-    def __save_test_accuracy(self):
+    def __add_test_accuracy(self):
         with eval_mode(self.model):
             matches = []
             for x, y_true in self.data_holder.test:

@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Set
 
 import torch
 import torch.utils.data
@@ -33,19 +33,18 @@ class StochasticTrainer(ABC):
         self.iteration_print_interval = iteration_print_interval
         self.save_model_interval = save_model_interval
         self.stopwatch = Stopwatch()
-        self.saved_metrics = set()
+        self.metrics = set()  # type: Set[TensorHolder]
 
-        metric_name = 'train_loss'
-        self.train_losses = TensorHolder(self.results_dir, metric_name)
-        self.saved_metrics.add(self.train_losses.name)
+        self.train_losses = TensorHolder(self.results_dir, 'train_loss')
+        self.metrics.add(self.train_losses)
         self.test_losses = TensorHolder(self.results_dir, 'test_loss')
-        self.saved_metrics.add(self.test_losses.name)
+        self.metrics.add(self.test_losses)
         if self.variance_interval:
             self.estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
-            self.saved_metrics.add(self.estimator_stds.name)
+            self.metrics.add(self.estimator_stds)
         if self.compute_perf:
             self.iteration_times = TensorHolder(self.results_dir, 'iteration_times')
-            self.saved_metrics.add(self.iteration_times.name)
+            self.metrics.add(self.iteration_times)
 
     def train(self) -> None:
         print(f'Training with {self.gradient_estimator}.')
@@ -61,12 +60,8 @@ class StochasticTrainer(ABC):
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 torch.save(self.model, model_path)
             self.post_epoch(epoch)
-        self.train_losses.save()
-        self.test_losses.save()
-        if self.compute_perf:
-            self.iteration_times.save()
-        if self.variance_interval:
-            self.estimator_stds.save()
+        for metric in self.metrics:
+            metric.save()
 
     def __train_epoch(self) -> None:
         self.model.train()

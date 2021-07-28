@@ -40,7 +40,7 @@ def main(args):
         fix_random_seed(config['seed'])
         trainer = get_trainer(config['task'], config)
         trainer.train()
-        config['saved_metrics'] = list(trainer.saved_metrics)
+        config['saved_metrics'] = [m.name for m in trainer.metrics]
         save_meta_info(config)
 
 
