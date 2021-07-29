@@ -250,3 +250,47 @@ class ECG5000(DataHolder):
             **loader_args)
 
         return lambda: train_holder, lambda: test_holder
+
+@DataHolder.register_dataset('sinusoidal_frequencies')
+class SinusoidalFrequencies(DataHolder):
+    NAME = 'sinusoidal_frequencies'
+
+    @property
+    def dims(self):
+        return 1,  # TODO
+
+    @staticmethod
+    def _load(batch_size, shuffle=True, *args, **kwargs):
+        loader_args = dict()
+        if 'device' in kwargs:
+            loader_args['pin_memory'] = 'cuda' in kwargs['device']
+        if 'num_workers' in kwargs:
+            loader_args['num_workers'] = kwargs['num_workers']
+
+        dataset = 'sinusoidal_frequencies'
+        datadir = os.path.join(DataHolder.DATA_ROOT, dataset, dataset)
+        X_train = np.loadtxt(datadir + '_X_TRAIN', delimiter=',')
+        X_test = np.loadtxt(datadir + '_X_TEST', delimiter=',')
+        X_train = np.expand_dims(X_train, -1)
+        X_test = np.expand_dims(X_test, -1)
+        Y_train = np.loadtxt(datadir + '_Y_TRAIN', delimiter=',')
+        Y_test = np.loadtxt(datadir + '_Y_TEST', delimiter=',')
+
+        train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(Y_train))
+        test_dataset = TensorDataset(torch.FloatTensor(X_test), torch.FloatTensor(Y_test))
+
+        train_holder = DataLoader(
+            dataset=train_dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=True,
+            **loader_args)
+
+        test_holder = DataLoader(
+            dataset=test_dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=True,
+            **loader_args)
+
+        return lambda: train_holder, lambda: test_holder

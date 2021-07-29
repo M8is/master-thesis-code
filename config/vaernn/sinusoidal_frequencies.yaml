@@ -6,7 +6,7 @@ seeds:
   - 65738917
   - 23478912
   - 11894567
-dataset: 'ECG5000'
+dataset: 'sinusoidal_frequencies'
 batch_size: 32
 distribution: 'MultivariateNormal'
 latent_dim: 20

@@ -20,6 +20,11 @@ RNN_CELLS = {
 
 
 class VAERNN(StochasticModel):
+    """
+    Variational Recurrent Autoencoder.
+    https://arxiv.org/pdf/1412.6581.pdf
+    """
+
     def __init__(self, encoder: torch.nn.Module, decoder: torch.nn.Module, distribution_type: Type[Distribution]):
         super().__init__()
         self.encoder = encoder
