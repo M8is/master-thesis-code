@@ -8,7 +8,7 @@ seeds:
 dataset: 'cancer'
 batch_size: 32
 distribution: 'MultivariateNormal'
-epochs: 40
+epochs: 100
 learning_rate: 0.001
 compute_perf: True
 variance_interval: 5
@@ -18,12 +18,8 @@ subpath_keys:
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 60
-  - mc_estimator: 'Reinforce'
     sample_size: 120
   - mc_estimator: 'MVD'
-    sample_size: 1
-  - mc_estimator: 'Pathwise'
     sample_size: 1
   - mc_estimator: 'Pathwise'
     sample_size: 120

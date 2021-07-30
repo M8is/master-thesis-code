@@ -72,9 +72,11 @@ class StochasticTrainer(ABC):
             interpretation = self.model.interpret(distribution.sample(), x_batch)
             loss = self.loss(x_batch, y_batch, interpretation).mean()
             self.optimizer.zero_grad()
-            kld = distribution.kl().mean()
             if self.optimize_kld:
+                kld = distribution.kl().mean()
                 kld.backward(retain_graph=True)
+            else:
+                kld = 0
             loss_fn = self.__get_loss_fn(x_batch, y_batch)
             self.stopwatch.resume()
             distribution.backward(self.gradient_estimator, loss_fn, self.sample_size)
