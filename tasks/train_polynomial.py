@@ -49,3 +49,7 @@ class TrainPolynomial(StochasticTrainer):
     @staticmethod
     def quadratic_sinusoid(x: torch.Tensor) -> torch.Tensor:
         return (x - .5) ** 2 + torch.sin(10 * math.pi * x) / 20
+
+    @staticmethod
+    def sinusoid(x: torch.Tensor) -> torch.Tensor:
+        return (torch.sin(10 * math.pi * x) + 1) / 2
