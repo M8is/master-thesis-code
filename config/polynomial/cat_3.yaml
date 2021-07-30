@@ -22,3 +22,4 @@ runs:
     sample_size: 1
   - mc_estimator: 'Pathwise'
     sample_size: 3
+    gumbel_temperature: 0.5

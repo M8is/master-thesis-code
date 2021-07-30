@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 import torch
@@ -44,3 +45,7 @@ class TrainPolynomial(StochasticTrainer):
     @staticmethod
     def quadratic_flat(x: torch.Tensor) -> torch.Tensor:
         return .25 * (x - 1.) ** 2
+
+    @staticmethod
+    def quadratic_sinusoid(x: torch.Tensor) -> torch.Tensor:
+        return (x - .5) ** 2 + torch.sin(10 * math.pi * x) / 20
