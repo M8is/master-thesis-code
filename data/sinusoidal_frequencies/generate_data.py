@@ -8,8 +8,8 @@ def sinus_funcion(f, A, t):
 
 
 Amp = 1.
-freqs = [0.1, 0.5, 1., 1.5]
-L = 300
+freqs = [0.01, 0.05, 0.1, 0.5]
+L = 200
 N = 5000
 times = np.linspace(0, 10, L, dtype=np.float32)
 X = np.zeros((N, L), dtype=np.float32)
