@@ -1,0 +1,25 @@
+task: 'logreg'
+seeds:
+  - 2930489
+  - 4063329
+  - 4637380
+  - 8463906
+  - 8945623
+dataset: 'diabetes'
+batch_size: 32
+distribution: 'MultivariateNormal'
+epochs: 100
+learning_rate: 0.001
+compute_perf: True
+variance_interval: 5
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
+device: 'cuda'
+runs:
+  - mc_estimator: 'Reinforce'
+    sample_size: 120
+  - mc_estimator: 'MVD'
+    sample_size: 1
+  - mc_estimator: 'Pathwise'
+    sample_size: 120
