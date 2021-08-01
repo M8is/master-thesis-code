@@ -22,8 +22,10 @@ subpath_keys:
 device: 'cuda'
 variance_interval: 20
 runs:
-  - mv_dims: 0
   - mv_dims: 5
   - mv_dims: 10
   - mv_dims: 15
+  - mv_dims: 0
+    mc_estimator: 'SF'
   - mv_dims: 20
+    mc_estimator: 'MVD'
