@@ -32,14 +32,16 @@ class TrainLogReg(StochasticTrainer):
         return bce(y_pred, y.expand_as(y_pred))
 
     def post_epoch(self, epoch: int) -> None:
-        super().post_epoch(epoch)
         self.__add_test_accuracy()
+        super().post_epoch(epoch)
 
     def __add_test_accuracy(self):
         with eval_mode(self.model):
             matches = []
             for x, y_true in self.data_holder.test:
                 y_true = y_true.to(self.device)
-                y_pred = self.model(x.to(self.device))
+                y_pred = self.model(x.to(self.device)).round().int()
                 matches.append(torch.eq(y_true, y_pred))
-        self.test_accuracies.add(torch.cat(matches).float().mean())
+            accuracy = torch.cat(matches).float().mean()
+            self.test_accuracies.add(accuracy)
+            print(f'-> Test Accuracy: {accuracy:.4f}')
