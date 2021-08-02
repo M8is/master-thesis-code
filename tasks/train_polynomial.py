@@ -11,12 +11,16 @@ from utils.distribution_factory import get_distribution_type
 
 
 class TrainPolynomial(StochasticTrainer):
-    def __init__(self, learning_rate: float, distribution: str, init_params: List[float], polynomial: str,
-                 repeat_params: bool = 1, *args, **kwargs):
+    def __init__(self, learning_rate: float, distribution: str, polynomial: str, init_params: List[float] = None,
+                 repeat_params: bool = 1, random_params: int = 0, *args, **kwargs):
         super().__init__(*args, dataset='empty', batch_size=kwargs.get('batch_size', 0), optimize_kld=False,
                          print_interval=kwargs.get('print_interval', float('inf')), **kwargs)
         self.polynomial = getattr(self, polynomial)
-        self.__model = PureProbDistModel(get_distribution_type(distribution), repeat_params * init_params, **kwargs)
+        if random_params > 0:
+            init_params = torch.randn((random_params,))
+        else:
+            init_params = torch.FloatTensor([repeat_params * init_params])
+        self.__model = PureProbDistModel(get_distribution_type(distribution), init_params, **kwargs)
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
     @property
@@ -52,4 +56,4 @@ class TrainPolynomial(StochasticTrainer):
 
     @staticmethod
     def sinusoid(x: torch.Tensor) -> torch.Tensor:
-        return (torch.sin(10 * math.pi * x) + 1) / 2
+        return (torch.sin(4 * math.pi * x) + 1) / 2

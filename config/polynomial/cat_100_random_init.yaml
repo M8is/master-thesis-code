@@ -1,0 +1,23 @@
+task: 'polynomial'
+seeds:
+  - 9074185
+distribution: 'categorical'
+latent_dim: 1
+random_params: 1000
+polynomial: 'quadratic'
+domain: 2  # categorical output between 0 and 1.
+epochs: 10000  # each iteration is one epoch in this task.
+learning_rate: 0.1
+save_model_interval: 2000
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
+device: 'cuda'
+runs:
+  - mc_estimator: 'Reinforce'
+    sample_size: 100
+  - mc_estimator: 'MVD'
+    sample_size: 1
+  - mc_estimator: 'Pathwise'
+    sample_size: 100
+    gumbel_temperature: 0.5
