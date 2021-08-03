@@ -195,6 +195,36 @@ class BreastCancer(DataHolder):
         return lambda: batch_iterator(batch_size, x_train, y_train), lambda: batch_iterator(batch_size, x_test, y_test)
 
 
+@DataHolder.register_dataset('iris')
+class IRIS(DataHolder):
+    @property
+    def dims(self):
+        return 4,
+
+    @staticmethod
+    def _load(batch_size, shuffle=True, *_, **__):
+        x, y = sklearn.datasets.load_iris(return_X_y=True)
+        # TODO: save/load in self.DATA_ROOT
+        x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in
+                                            sklearn.model_selection.train_test_split(x, y, shuffle=shuffle))
+        return lambda: batch_iterator(batch_size, x_train, y_train), lambda: batch_iterator(batch_size, x_test, y_test)
+
+
+@DataHolder.register_dataset('diabetes')
+class Diabetes(DataHolder):
+    @property
+    def dims(self):
+        return 10,
+
+    @staticmethod
+    def _load(batch_size, shuffle=True, *_, **__):
+        x, y = sklearn.datasets.load_diabetes(return_X_y=True)
+        # TODO: save/load in self.DATA_ROOT
+        x_train, x_test, y_train, y_test = (torch.tensor(d, requires_grad=False) for d in
+                                            sklearn.model_selection.train_test_split(x, y, shuffle=shuffle))
+        return lambda: batch_iterator(batch_size, x_train, y_train), lambda: batch_iterator(batch_size, x_test, y_test)
+
+
 def batch_iterator(batch_size, x, y):
     assert x.shape[0] == y.shape[0]
     for i in range(0, len(x), batch_size):

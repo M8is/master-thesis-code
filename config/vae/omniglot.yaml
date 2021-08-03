@@ -17,7 +17,7 @@ latent_dim: 128
 epochs: 20
 learning_rate: 0.0001
 compute_perf: true
-compute_variance: true
+variance_interval: 20
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'

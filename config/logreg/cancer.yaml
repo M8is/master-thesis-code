@@ -6,14 +6,15 @@ seeds:
   - 8463906
   - 8945623
 dataset: 'cancer'
-batch_size: 144
+batch_size: 32
 distribution: 'MultivariateNormal'
-epochs: 40
+epochs: 100
 learning_rate: 0.001
-compute_variance: True
 compute_perf: True
+variance_interval: 5
 subpath_keys:
   - 'mc_estimator'
+  - 'sample_size'
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'

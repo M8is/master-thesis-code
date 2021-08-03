@@ -3,9 +3,7 @@ seeds:
   - 9074185
 distribution: 'categorical'
 latent_dim: 1
-init_params:
-  - 1
-repeat_params: 100
+random_params: 1000
 polynomial: 'quadratic'
 domain: 2  # categorical output between 0 and 1.
 epochs: 10000  # each iteration is one epoch in this task.

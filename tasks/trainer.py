@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional, Set
 
 import torch
 import torch.utils.data
@@ -17,7 +17,7 @@ from utils.tensor_holders import TensorHolder
 
 class StochasticTrainer(ABC):
     def __init__(self, results_dir: str, epochs: int, mc_estimator: str, sample_size: int, device: str = 'cpu',
-                 compute_variance: bool = False, compute_perf: bool = False, optimize_kld: bool = True,
+                 variance_interval: Optional[int] = None, compute_perf: bool = False, optimize_kld: bool = True,
                  iteration_print_interval: Optional[int] = 100, epoch_print_interval: Optional[int] = 1,
                  save_model_interval: Optional[int] = None, **kwargs):
         self.results_dir = results_dir
@@ -26,22 +26,27 @@ class StochasticTrainer(ABC):
         self.sample_size = sample_size
         self.data_holder = DataHolder.get(**kwargs)
         self.gradient_estimator = get_estimator(mc_estimator, **kwargs)
-        self.compute_variance = compute_variance
+        self.variance_interval = variance_interval
         self.compute_perf = compute_perf
         self.optimize_kld = optimize_kld
         self.epoch_print_interval = epoch_print_interval
         self.iteration_print_interval = iteration_print_interval
         self.save_model_interval = save_model_interval
         self.stopwatch = Stopwatch()
+        self.metrics = set()  # type: Set[TensorHolder]
 
         self.train_losses = TensorHolder(self.results_dir, 'train_loss')
+        self.metrics.add(self.train_losses)
         self.test_losses = TensorHolder(self.results_dir, 'test_loss')
-        if self.compute_variance:
+        self.metrics.add(self.test_losses)
+        if self.variance_interval:
             self.estimator_stds = TensorHolder(self.results_dir, 'estimator_stds')
+            self.metrics.add(self.estimator_stds)
         if self.compute_perf:
             self.iteration_times = TensorHolder(self.results_dir, 'iteration_times')
+            self.metrics.add(self.iteration_times)
 
-    def train(self) -> Iterable[str]:
+    def train(self) -> None:
         print(f'Training with {self.gradient_estimator}.')
         self.model.to(self.device)
         model_path = Path(self.results_dir) / f'{self.gradient_estimator.name()}_0.pt'
@@ -54,22 +59,9 @@ class StochasticTrainer(ABC):
                 model_path = Path(self.results_dir) / f'{self.gradient_estimator.name()}_{epoch}.pt'
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 torch.save(self.model, model_path)
-            if self.epoch_print_interval and (epoch % self.epoch_print_interval == 0 or epoch == self.epochs):
-                print(f"Epoch: {epoch}/{self.epochs}, Train loss: {self.train_losses.data.numpy()[-1].mean():.2f}, "
-                      f"Test loss: {self.test_losses.data.numpy()[-1].mean():.2f}",
-                      flush=True)
-                print(60 * "-")
-
-        self.train_losses.save()
-        self.test_losses.save()
-        saved_metrics = [self.train_losses.name, self.test_losses.name]
-        if self.compute_perf:
-            self.iteration_times.save()
-            saved_metrics.append(self.iteration_times.name)
-        if self.compute_variance:
-            self.estimator_stds.save()
-            saved_metrics.append(self.estimator_stds.name)
-        return saved_metrics
+            self.post_epoch(epoch)
+        for metric in self.metrics:
+            metric.save()
 
     def __train_epoch(self) -> None:
         self.model.train()
@@ -94,12 +86,10 @@ class StochasticTrainer(ABC):
             self.optimizer.step()
             if self.compute_perf:
                 self.iteration_times.add(torch.tensor(iteration_time))
-            if self.iteration_print_interval and batch_id % self.iteration_print_interval == 0:
-                elbo_prefix = f"| ELBO: {-(loss + kld):.2f} " if self.optimize_kld else ''
-                print(f"{elbo_prefix}| Loss: {loss:.1f} | KLD: {kld:.1f} |")
-            if self.compute_variance and batch_id % self.variance_interval == 0:
+            if self.variance_interval and batch_id % self.variance_interval == 0:
                 self.estimator_stds.add(self.__estimate_std(self.model.encode(x_batch), loss_fn, n_estimates=500))
             self.train_losses.add(loss + kld)
+            self.post_iteration(batch_id, loss, kld)
 
     def __test_epoch(self) -> None:
         with eval_mode(self.model):
@@ -152,9 +142,17 @@ class StochasticTrainer(ABC):
     def __get_loss_fn(self, x: torch.Tensor, y: torch.Tensor) -> Callable[[torch.Tensor], torch.Tensor]:
         return lambda samples: self.loss(x, y, self.model.interpret(samples, x))
 
-    @property
-    def variance_interval(self) -> int:
-        raise ValueError("Computing variance not expected.")
+    def post_epoch(self, epoch: int) -> None:
+        if self.epoch_print_interval and (epoch % self.epoch_print_interval == 0 or epoch == self.epochs):
+            print(f"Epoch: {epoch}/{self.epochs}, Train loss: {self.train_losses.data.numpy()[-1].mean():.2f}, "
+                  f"Test loss: {self.test_losses.data.numpy()[-1].mean():.2f}",
+                  flush=True)
+            print(60 * "-")
+
+    def post_iteration(self, batch_id: int, loss: torch.Tensor, kld: torch.Tensor) -> None:
+        if self.iteration_print_interval and batch_id % self.iteration_print_interval == 0:
+            elbo_prefix = f"| ELBO: {-(loss + kld):.2f} " if self.optimize_kld else ''
+            print(f"{elbo_prefix}| Loss: {loss:.1f} | KLD: {kld:.1f} |")
 
     @property
     @abstractmethod

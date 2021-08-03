@@ -17,7 +17,6 @@ class MVSFEstimator(MCEstimator):
         self.sfe = SFEstimator()
         self.mve = MVEstimator()
 
-    @property
     def name(self) -> str:
         return "MVSF"
 
