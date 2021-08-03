@@ -13,8 +13,7 @@ from utils.distribution_factory import get_distribution_type
 class TrainPolynomial(StochasticTrainer):
     def __init__(self, learning_rate: float, distribution: str, polynomial: str, init_params: List[float] = None,
                  repeat_params: bool = 1, random_params: int = 0, *args, **kwargs):
-        super().__init__(*args, dataset='empty', batch_size=kwargs.get('batch_size', 0), optimize_kld=False,
-                         print_interval=kwargs.get('print_interval', float('inf')), **kwargs)
+        super().__init__(*args, dataset='empty', batch_size=kwargs.get('batch_size', 0), **kwargs)
         self.polynomial = getattr(self, polynomial)
         if random_params > 0:
             init_params = torch.randn((random_params,))

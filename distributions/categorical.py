@@ -21,9 +21,13 @@ class Categorical(Distribution):
         if CategoricalDomain(domain) == CategoricalDomain.ZERO_ONE:
             self.sample = self.with_normalized_outputs(self.sample)
             self.rsample = self.with_normalized_outputs(self.rsample)
+            orig_log_prob = self.log_prob
+            self.log_prob = lambda v: orig_log_prob(self.num_categories * v)
             self.domain = torch.linspace(0, 1, self.num_categories)
         elif CategoricalDomain(domain) == CategoricalDomain.INTEGER:
             self.domain = torch.arange(self.num_categories)
+        else:
+            print(f"Unkown domain {CategoricalDomain(domain)}.")
 
     @property
     def num_categories(self):
