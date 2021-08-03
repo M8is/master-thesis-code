@@ -3,10 +3,12 @@ from typing import Dict, Any
 from tasks.train_log_reg import TrainLogReg
 from tasks.train_polynomial import TrainPolynomial
 from tasks.train_vae import TrainVAE
+from tasks.train_vae_rnn import TrainVAERNN
 from tasks.trainer import StochasticTrainer
 
 __TASKS = {
     'vae': TrainVAE,
+    'vaernn': TrainVAERNN,
     'logreg': TrainLogReg,
     'polynomial': TrainPolynomial
 }
