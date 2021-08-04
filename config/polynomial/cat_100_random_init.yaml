@@ -3,12 +3,12 @@ seeds:
   - 9074185
 distribution: 'categorical'
 latent_dim: 1
-random_params: 1000
+random_params: 100
 polynomial: 'quadratic'
-domain: 2  # categorical output between 0 and 1.
-epochs: 10000  # each iteration is one epoch in this task.
+epochs: 1000  # each iteration is one epoch in this task.
 learning_rate: 0.1
-save_model_interval: 2000
+save_model_interval: 200
+normalize_samples: true
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'

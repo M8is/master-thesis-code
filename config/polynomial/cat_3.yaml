@@ -7,17 +7,17 @@ init_params:
   - 1
 repeat_params: 3
 polynomial: 'quadratic'
-domain: 2  # categorical output between 0 and 1.
 epochs: 100  # each iteration is one epoch in this task.
 learning_rate: 0.1
 save_model_interval: 20
+normalize_samples: true
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 3
+    sample_size: 100
   - mc_estimator: 'MVD'
     sample_size: 1
   - mc_estimator: 'Pathwise'

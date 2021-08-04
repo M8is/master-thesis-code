@@ -4,6 +4,7 @@ from typing import List
 import torch
 import torch.utils.data
 
+import distributions.categorical
 from models.pure_probability_distribution import PureProbDistModel
 from models.stochastic_model import StochasticModel
 from tasks.trainer import StochasticTrainer
@@ -19,8 +20,10 @@ class TrainPolynomial(StochasticTrainer):
             init_params = torch.randn((random_params,))
         else:
             init_params = torch.FloatTensor([repeat_params * init_params])
-        self.__model = PureProbDistModel(get_distribution_type(distribution), init_params, **kwargs)
+        distribution_type = get_distribution_type(distribution)
+        self.__model = PureProbDistModel(distribution_type, init_params, **kwargs)
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
+
 
     @property
     def model(self) -> StochasticModel:
