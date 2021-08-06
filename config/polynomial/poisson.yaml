@@ -7,7 +7,7 @@ init_params:
   - 0
 polynomial: 'quadratic_shifted'
 epochs: 100 # each iteration is one epoch in this task.
-learning_rate: 1
+learning_rate: 0.1
 save_model_interval: 20
 optimize_kld: false
 subpath_keys:
