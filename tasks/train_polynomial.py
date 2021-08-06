@@ -47,5 +47,9 @@ class TrainPolynomial(StochasticTrainer):
         return (x - .5) ** 2
 
     @staticmethod
+    def quadratic_shifted(x: torch.Tensor) -> torch.Tensor:
+        return (x - 3) ** 2
+
+    @staticmethod
     def sinusoid(x: torch.Tensor) -> torch.Tensor:
         return torch.sin(4 * math.pi * x)

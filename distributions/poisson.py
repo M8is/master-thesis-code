@@ -1,8 +1,18 @@
+import math
+
 import torch
 from .exponential import Exponential
+from scipy.special import factorial
 
 
 class Poisson(Exponential):
+    def pdf(self, end: int = 20):
+        with torch.no_grad():
+            range_ = torch.arange(end)
+            e = torch.tensor(math.e)
+            pdf = self.params.pow(range_) * e.pow(-self.params) / factorial(range_)
+            return range_, pdf.squeeze()
+
     def sample(self, sample_shape: torch.Size = torch.Size([])):
         dist = torch.distributions.poisson.Poisson(self.params)
         return dist.sample(sample_shape)
@@ -17,7 +27,7 @@ class Poisson(Exponential):
             return torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
 
     def log_prob(self, value):
-        return torch.distributions.Poisson(self.params).log_prob(value).sum(dim=-1)
+        return torch.distributions.Poisson(self.params).log_prob(value)
 
     @staticmethod
     def __sample_poisson(sample_size, rate):

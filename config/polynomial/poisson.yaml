@@ -1,0 +1,21 @@
+task: 'polynomial'
+seeds:
+  - 9074185
+distribution: 'poisson'
+latent_dim: 1
+init_params:
+  - 0
+polynomial: 'quadratic_shifted'
+epochs: 100 # each iteration is one epoch in this task.
+learning_rate: 1
+save_model_interval: 20
+optimize_kld: false
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
+device: 'cuda'
+runs:
+  - mc_estimator: 'Reinforce'
+    sample_size: 100
+  - mc_estimator: 'MVD'
+    sample_size: 50

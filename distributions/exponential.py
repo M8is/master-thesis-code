@@ -22,8 +22,8 @@ class Exponential(Distribution):
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():
-            pos_losses, neg_losses = losses.mean(dim=0)
-            grad = (1. / self.params) * (pos_losses - neg_losses)
+            pos_losses, neg_losses = losses.mean(dim=1).transpose(-2, -1)  # Mean over samples
+            grad = (pos_losses - neg_losses) / self.params
         assert grad.shape == self.params.shape, f"Grad shape {grad.shape} != params shape {self.params.shape}"
         self.params.backward(gradient=grad, retain_graph=retain_graph)
 
@@ -31,7 +31,7 @@ class Exponential(Distribution):
         return (self.params - torch.log(self.params) - 1).sum(dim=1)
 
     def log_prob(self, value):
-        return torch.distributions.Exponential(self.params).log_prob(value).sum(dim=-1)
+        return torch.distributions.Exponential(self.params).log_prob(value)
 
     @staticmethod
     def __sample_exponential(sample_size, rate):
