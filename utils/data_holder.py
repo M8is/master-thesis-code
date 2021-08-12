@@ -167,7 +167,7 @@ class FashionMNIST(DataHolder):
         if 'device' in kwargs:
             loader_args['pin_memory'] = 'cuda' in kwargs['device']
         if 'num_workers' in kwargs:
-            loader_args['num_workers'] = kwargs['num_workers']
+            loader_args['num_workers'] = kwargs['data_holder_num_workers']
 
         train_holder = DataLoader(
             datasets.FashionMNIST(root=DataHolder.DATA_ROOT, train=True, download=True,

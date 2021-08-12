@@ -71,7 +71,7 @@ class StochasticTrainer(ABC):
             distribution = self.model.encode(x_batch)
             interpretation = self.model.interpret(distribution.sample(), x_batch)
             loss = self.loss(x_batch, y_batch, interpretation).mean()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
             if self.optimize_kld:
                 kld = distribution.kl().mean()
                 kld.backward(retain_graph=True)
@@ -109,13 +109,13 @@ class StochasticTrainer(ABC):
         self.gradient_estimator.freeze()
         sample_size = 1
         grads = []
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
         for i in range(n_estimates):
             retain_graph = (i + 1) < n_estimates
             distribution.params.retain_grad()
             distribution.backward(self.gradient_estimator, loss_fn, sample_size, retain_graph=retain_graph)
             grads.append(distribution.params.grad)
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
         self.gradient_estimator.unfreeze()
         return torch.stack(grads).std(dim=0).mean()
 
@@ -128,14 +128,14 @@ class StochasticTrainer(ABC):
             loss_fn = self.__get_loss_fn(x, y)
             distribution = self.model.encode(x)
             times = []
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
             for i in range(n_estimates):
                 retain_graph = (i + 1) < n_estimates
                 before = time.process_time()
                 distribution.backward(self.gradient_estimator, loss_fn, self.sample_size, retain_graph=retain_graph)
                 after = time.process_time()
                 times.append(after - before)
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
             times = torch.FloatTensor(times)
             return torch.stack((times.mean(), times.std()))
 
