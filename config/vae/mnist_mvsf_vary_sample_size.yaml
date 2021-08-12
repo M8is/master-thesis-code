@@ -15,22 +15,26 @@ latent_dim: 20
 epochs: 10
 learning_rate: 0.001
 subpath_keys:
-  - 'mv_dims'
+  - 'mc_estimator'
+  - 'sample_size'
 device: 'cuda'
 variance_interval: 20
 runs:
   - mv_dims: 0
     mc_estimator: 'SF'
-    sample_size: 80
+    sample_size: 60
+  - mv_dims: 0
+    mc_estimator: 'SF'
+    sample_size: 40
+  - mv_dims: 0
+    mc_estimator: 'SF'
+    sample_size: 30
   - mv_dims: 5
     mc_estimator: 'MVSF'
-    sample_size: 60  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 10
-    mc_estimator: 'MVSF'
     sample_size: 40  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 15
+  - mv_dims: 5
     mc_estimator: 'MVSF'
     sample_size: 20  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 20
-    mc_estimator: 'MVD'
-    sample_size: 1
+  - mv_dims: 5
+    mc_estimator: 'MVSF'
+    sample_size: 10  # sample size is just for SF; MVD is always set to 1

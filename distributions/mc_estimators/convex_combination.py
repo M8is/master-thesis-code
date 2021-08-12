@@ -38,7 +38,7 @@ class MVSFEstimator(MCEstimator):
 
         filter_ = torch.ones_like(distribution.params) - filter_
         with self.__filtered_grad(distribution, filter_):
-            self.mve.backward(distribution, loss_fn, sample_size, retain_graph)
+            self.mve.backward(distribution, loss_fn, 1, retain_graph)
 
     def __get_random_filter(self, distribution):
         filter_ = torch.ones_like(distribution.params)
