@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot(means: np.array, stds: np.array, label: str, meta: Dict[str, Any], xspace: np.array = None) -> None:
+def plot(means: np.array, stds: np.array, label: str, meta: Dict[str, Any], xspace: np.array = None,
+         linewidth: float = .5) -> None:
     if xspace is None:
         xspace = np.arange(len(means))
     assert len(xspace) == len(means), f"Length of xspace {len(xspace)} does not match number of values {len(means)}."
     plot_label = __parse_label(label, meta)
-    plt.plot(xspace, means, label=plot_label, linewidth=.5)
+    plt.plot(xspace, means, label=plot_label, linewidth=linewidth)
     if stds is not None:
         plt.fill_between(xspace, means - stds, means + stds, alpha=.1)
 
