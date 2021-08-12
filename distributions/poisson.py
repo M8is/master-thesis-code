@@ -18,13 +18,13 @@ class Poisson(Exponential):
         return dist.sample(sample_shape)
 
     def rsample(self, sample_shape: torch.Size = torch.Size([])):
-        raise ValueError("Poisson cannot be reparameterized.")
+        raise NotImplementedError("Poisson cannot be reparameterized.")
 
     def mvsample(self, size):
         with torch.no_grad():
-            pos_samples = self.__sample_poisson(size, self.params + 1.)
+            pos_samples = self.__sample_poisson(size, self.params + 1)
             neg_samples = self.__sample_poisson(size, self.params)
-            return torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
+            return torch.diag_embed(torch.stack((pos_samples, neg_samples)))
 
     def log_prob(self, value):
         return torch.distributions.Poisson(self.params).log_prob(value)

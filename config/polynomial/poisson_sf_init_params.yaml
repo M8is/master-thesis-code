@@ -1,0 +1,30 @@
+task: 'polynomial'
+seeds:
+  - 9074185
+distribution: 'poisson'
+latent_dim: 1
+init_params:
+  - 3
+polynomial: 'quadratic_shifted'
+epochs: 100 # each iteration is one epoch in this task.
+save_model_interval: 100
+optimize_kld: false
+mc_estimator: 'Reinforce'
+sample_size: 1000
+learning_rate: 0.1
+subpath_keys:
+  - 'init_rate'
+device: 'cuda'
+runs:
+  - init_rate: 0.367879441
+    init_params:
+      - -0.693147181
+  - init_rate: 1
+    init_params:
+      - 0
+  - init_rate: 5
+    init_params:
+      - 1.60943791
+  - init_rate: 10
+    init_params:
+      - 2.30258509

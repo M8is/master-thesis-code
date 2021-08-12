@@ -17,12 +17,12 @@ class Exponential(Distribution):
     def mvsample(self, size):
         pos_samples = self.__sample_exponential(size, self.params)
         neg_samples = self.__sample_negative(size, self.params)
-        samples = torch.diag_embed(torch.stack((pos_samples, neg_samples))).transpose(2, 3)
+        samples = torch.diag_embed(torch.stack((pos_samples, neg_samples)))
         return samples + self.params
 
     def mvd_backward(self, losses, retain_graph):
         with torch.no_grad():
-            pos_losses, neg_losses = losses.mean(dim=1).transpose(-2, -1)  # Mean over samples
+            pos_losses, neg_losses = losses.mean(dim=1)
             grad = (pos_losses - neg_losses) / self.params
         assert grad.shape == self.params.shape, f"Grad shape {grad.shape} != params shape {self.params.shape}"
         self.params.backward(gradient=grad, retain_graph=retain_graph)
