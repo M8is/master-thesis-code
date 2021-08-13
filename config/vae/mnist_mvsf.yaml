@@ -22,15 +22,15 @@ runs:
   - mv_dims: 0
     mc_estimator: 'SF'
     sample_size: 80
-  - mv_dims: 5
+  - mv_dims: 5  # 5 MV dims means MV estimate takes 20 loss evaluations
     mc_estimator: 'MVSF'
     sample_size: 60  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 10
+  - mv_dims: 10  # 10 MV dims means MV estimate takes 40 loss evaluations
     mc_estimator: 'MVSF'
     sample_size: 40  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 15
+  - mv_dims: 15  # 15 MV dims means MV estimate takes 60 loss evaluations
     mc_estimator: 'MVSF'
     sample_size: 20  # sample size is just for SF; MVD is always set to 1
-  - mv_dims: 20
+  - mv_dims: 20  # 20 MV dims means MV estimate takes 80 loss evaluations
     mc_estimator: 'MVD'
     sample_size: 1
