@@ -7,11 +7,11 @@ init_params:
   - 3
 polynomial: 'quadratic_shifted'
 epochs: 50 # each iteration is one epoch in this task.
-save_model_interval: 10
+save_model_interval: 50
 optimize_kld: false
 mc_estimator: 'Reinforce'
 sample_size: 2
-learning_rate: 0.01
+learning_rate: 0.1
 subpath_keys:
   - 'init_rate'
 device: 'cuda'

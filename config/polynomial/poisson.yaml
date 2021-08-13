@@ -4,18 +4,18 @@ seeds:
 distribution: 'poisson'
 latent_dim: 1
 init_params:
-  - 3
+  - 0
 polynomial: 'quadratic_shifted'
-epochs: 1000 # each iteration is one epoch in this task.
-save_model_interval: 200
+epochs: 100 # each iteration is one epoch in this task.
+save_model_interval: 20
 optimize_kld: false
 subpath_keys:
   - 'mc_estimator'
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 1000
+    sample_size: 2
     learning_rate: 0.01
   - mc_estimator: 'MVD'
-    sample_size: 500
-    learning_rate: 0.001
+    sample_size: 1
+    learning_rate: 0.1

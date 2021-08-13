@@ -5,14 +5,14 @@ import numpy as np
 
 
 def plot(means: np.array, stds: np.array, label: str, meta: Dict[str, Any], xspace: np.array = None,
-         linewidth: float = .5) -> None:
+         linewidth: float = .5, std_alpha: float = .1, **plot_kwargs) -> None:
     if xspace is None:
         xspace = np.arange(len(means))
     assert len(xspace) == len(means), f"Length of xspace {len(xspace)} does not match number of values {len(means)}."
     plot_label = __parse_label(label, meta)
-    plt.plot(xspace, means, label=plot_label, linewidth=linewidth)
+    plt.plot(xspace, means, label=plot_label, linewidth=linewidth, **plot_kwargs)
     if stds is not None:
-        plt.fill_between(xspace, means - stds, means + stds, alpha=.1)
+        plt.fill_between(xspace, means - stds, means + stds, alpha=std_alpha, **plot_kwargs)
 
 
 def legend() -> None:

@@ -22,8 +22,9 @@ class Poisson(Exponential):
 
     def mvsample(self, size):
         with torch.no_grad():
-            pos_samples = self.__sample_poisson(size, self.params + 1)
-            neg_samples = self.__sample_poisson(size, self.params)
+            samples = self.__sample_poisson(size, self.params)
+            pos_samples = samples + 1
+            neg_samples = samples
             return torch.diag_embed(torch.stack((pos_samples, neg_samples)))
 
     def log_prob(self, value):

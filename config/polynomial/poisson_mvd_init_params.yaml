@@ -6,11 +6,11 @@ latent_dim: 1
 init_params:
   - 3
 polynomial: 'quadratic_shifted'
-epochs: 100 # each iteration is one epoch in this task.
-save_model_interval: 100
+epochs: 50 # each iteration is one epoch in this task.
+save_model_interval: 10
 optimize_kld: false
 mc_estimator: 'MVD'
-sample_size: 500
+sample_size: 1
 learning_rate: 0.01
 subpath_keys:
   - 'init_rate'
