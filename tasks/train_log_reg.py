@@ -14,6 +14,8 @@ class TrainLogReg(StochasticTrainer):
         latent_dim = self.data_holder.dims[-1]
         self.__model = LogisticRegressionClassifier(latent_dim, get_distribution_type(distribution))
         self.__optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
+        MAX_ITERATIONS = 1500  # should be n_epochs*len(train_data)//batch_size, judging from here  https://github.com/deepmind/mc_gradients/blob/b99c2a3059d0b81606125f2eff4c161c6806b963/monte_carlo_gradients/main.py#L281
+        self.__lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.__optimizer, MAX_ITERATIONS)
         self.test_accuracies = TensorHolder(self.results_dir, 'test_accuracies')
         self.metrics.add(self.test_accuracies)
 
@@ -24,6 +26,10 @@ class TrainLogReg(StochasticTrainer):
     @property
     def optimizer(self) -> torch.optim.Optimizer:
         return self.__optimizer
+
+    @property
+    def lr_scheduler(self):
+        return self.__lr_scheduler
 
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         y, y_pred = labels.double(), outputs

@@ -15,8 +15,8 @@ variance_interval: 5
 subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
-device: 'cpu'
-joblib_jobs: 5
+device: 'cuda'
+joblib_jobs: 1
 runs:
 #  - mc_estimator: 'Reinforce'
 #    sample_size: 120
