@@ -1,7 +1,7 @@
 import torch
 
 from tasks.trainer import StochasticTrainer
-from utils.model_factory import get_vae, get_vae_rnn
+from utils.model_factory import get_vae_rnn
 
 
 class TrainVAERNN(StochasticTrainer):
@@ -10,10 +10,6 @@ class TrainVAERNN(StochasticTrainer):
         kwargs['sequence_length'] = self.data_holder.train.dataset.tensors[0].shape[1]
         self.__model = get_vae_rnn(data_dims=self.data_holder.dims, distribution=distribution, *args, **kwargs)
         self.__optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-
-    @property
-    def variance_interval(self) -> int:
-        return 20
 
     @property
     def model(self) -> torch.nn.Module:
