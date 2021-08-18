@@ -28,7 +28,7 @@ class Exponential(Distribution):
         self.params.backward(gradient=grad, retain_graph=retain_graph)
 
     def kl(self):
-        return (self.params - torch.log(self.params) - 1).sum(dim=1)
+        return (self.params - torch.log(self.params) - 1).sum(dim=-1)
 
     def log_prob(self, value):
         return torch.distributions.Exponential(self.params).log_prob(value)

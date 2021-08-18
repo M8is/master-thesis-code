@@ -66,7 +66,7 @@ class MultivariateNormal(Distribution):
 
     def kl(self):
         mean, std = self.params
-        return 0.5 * (mean.pow(2) + std.pow(2) - 2 * torch.log(std) - 1).sum(dim=1)
+        return 0.5 * (mean.pow(2) + std.pow(2) - 2 * torch.log(std) - 1).sum(dim=-1)
 
     def log_prob(self, value):
         mean, std = self.params
