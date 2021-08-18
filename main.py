@@ -45,7 +45,7 @@ def main(args):
         config['saved_metrics'] = [m.name for m in trainer.metrics]
         save_meta_info(config)
 
-    Parallel(n_jobs=meta_config['joblib_jobs'])(
+    Parallel(n_jobs=args.njobs)(
         delayed(training)(params)
         for params in new_configs)
 
@@ -53,4 +53,5 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Probabilistic Gradient Estimators')
     parser.add_argument('CONFIG', help='Path to config file')
+    parser.add_argument('--njobs', type=int, default=1, help='Maximum number of joblib jobs')
     main(parser.parse_args())
