@@ -46,6 +46,10 @@ class StochasticTrainer(ABC):
             self.iteration_times = TensorHolder(self.results_dir, 'iteration_times')
             self.metrics.add(self.iteration_times)
 
+    @property
+    def lr_scheduler(self) -> Optional[torch.optim.lr_scheduler]:
+        return None
+
     def train(self) -> None:
         print(f'Training with {self.gradient_estimator}.')
         self.model.to(self.device)
@@ -84,7 +88,8 @@ class StochasticTrainer(ABC):
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
-            self.lr_scheduler.step()
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step()
             if self.compute_perf:
                 self.iteration_times.add(torch.tensor(iteration_time))
             if self.variance_interval and batch_id % self.variance_interval == 0:
