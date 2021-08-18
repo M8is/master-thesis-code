@@ -84,6 +84,7 @@ class StochasticTrainer(ABC):
             if loss.requires_grad:
                 loss.backward()
             self.optimizer.step()
+            self.lr_scheduler.step()
             if self.compute_perf:
                 self.iteration_times.add(torch.tensor(iteration_time))
             if self.variance_interval and batch_id % self.variance_interval == 0:

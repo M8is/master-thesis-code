@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 import yaml
+from joblib import delayed, Parallel
 
 from tasks import get_trainer
 from utils.meta_util import save_meta_info, meta_exists
@@ -35,13 +36,18 @@ def main(args):
             else:
                 print(f"Skipping '{results_dir}'; meta file already exists.")
 
-    for i, config in enumerate(new_configs):
+    # Run seeds in parallel
+    def training(config):
         print(f"=== Training {i + 1}/{len(new_configs)} ===")
         fix_random_seed(config['seed'])
         trainer = get_trainer(config['task'], config)
         trainer.train()
         config['saved_metrics'] = [m.name for m in trainer.metrics]
         save_meta_info(config)
+
+    Parallel(n_jobs=meta_config['joblib_jobs'])(
+        delayed(training)(params)
+        for params in new_configs)
 
 
 if __name__ == '__main__':

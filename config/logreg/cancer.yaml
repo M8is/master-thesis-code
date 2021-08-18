@@ -1,10 +1,10 @@
 task: 'logreg'
 seeds:
-  - 2930489
-  - 4063329
-  - 4637380
-  - 8463906
-  - 8945623
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
 dataset: 'cancer'
 batch_size: 32
 distribution: 'MultivariateNormal'
@@ -16,10 +16,11 @@ subpath_keys:
   - 'mc_estimator'
   - 'sample_size'
 device: 'cuda'
+joblib_jobs: 1
 runs:
-  - mc_estimator: 'Reinforce'
-    sample_size: 120
-  - mc_estimator: 'MVD'
-    sample_size: 1
+#  - mc_estimator: 'Reinforce'
+#    sample_size: 120
+#  - mc_estimator: 'MVD'
+#    sample_size: 1
   - mc_estimator: 'Pathwise'
-    sample_size: 120
+    sample_size: 1
