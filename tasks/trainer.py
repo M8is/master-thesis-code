@@ -47,7 +47,7 @@ class StochasticTrainer(ABC):
             self.metrics.add(self.iteration_times)
 
     @property
-    def lr_scheduler(self) -> Optional[torch.optim.lr_scheduler]:
+    def lr_scheduler(self):
         return None
 
     def train(self) -> None:
