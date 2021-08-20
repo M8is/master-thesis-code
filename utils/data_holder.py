@@ -281,9 +281,9 @@ class ECG5000(DataHolder):
 
         return lambda: train_holder, lambda: test_holder
 
-@DataHolder.register_dataset('sinusoidal_frequencies')
+@DataHolder.register_dataset('sinus_frequencies')
 class SinusoidalFrequencies(DataHolder):
-    NAME = 'sinusoidal_frequencies'
+    NAME = 'sinus_frequencies'
 
     @property
     def dims(self):
@@ -297,7 +297,7 @@ class SinusoidalFrequencies(DataHolder):
         if 'num_workers' in kwargs:
             loader_args['num_workers'] = kwargs['num_workers']
 
-        dataset = 'sinusoidal_frequencies'
+        dataset = 'sinus_frequencies'
         datadir = os.path.join(DataHolder.DATA_ROOT, dataset, dataset)
         X_train = np.loadtxt(datadir + '_X_TRAIN', delimiter=',')
         X_test = np.loadtxt(datadir + '_X_TEST', delimiter=',')
