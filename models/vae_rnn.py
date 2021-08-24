@@ -5,10 +5,13 @@ from typing import Type, Tuple, Iterable
 
 import torch
 from torch import nn
+from torchvision.utils import save_image
 
 from distributions.distribution_base import Distribution
 from models.stochastic_model import StochasticModel
 from utils.data_holder import DataHolder
+from utils.eval_util import eval_mode
+
 
 RNN_CELLS = {
     'rnn': nn.RNN,
@@ -35,8 +38,16 @@ class VAERNN(StochasticModel):
     def interpret(self, sample: torch.Tensor, data: torch.Tensor) -> torch.Tensor:
         return self.decoder(sample)
 
-    def generate_trajectories(self, output_dir: Path, data_holder: DataHolder, limit: int) -> None:
-        raise NotImplementedError
+    def generate_images(self, output_dir: Path, data_holder: DataHolder, limit: int) -> None:
+        with eval_mode(self):
+            output_dir.mkdir(exist_ok=True)
+            for batch_id, (x_batch, _) in enumerate(data_holder.test):
+                x_batch = x_batch.to(next(self.parameters()).device)
+                x_pred_batch = self(x_batch)
+                comparison = torch.cat((x_batch, x_pred_batch.view(x_batch.shape)))
+                save_image(comparison, output_dir / f'recon_{batch_id}.png', nrow=x_batch.size()[0])
+                if batch_id == limit:
+                    break
 
 
 class FCEncoderRNN(nn.Module):
