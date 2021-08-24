@@ -26,15 +26,18 @@ subpath_keys:
 runs:
   - mc_estimator: 'MVD'
     sample_size: 1
+    variance_interval: 20
   - mc_estimator: 'Pathwise'
     sample_size: 1
   - mc_estimator: 'Pathwise'
     sample_size: 20
   - mc_estimator: 'Pathwise'
     sample_size: 80
+    variance_interval: 20
   - mc_estimator: 'Reinforce'
     sample_size: 10
   - mc_estimator: 'Reinforce'
     sample_size: 40
   - mc_estimator: 'Reinforce'
     sample_size: 80
+    variance_interval: 20

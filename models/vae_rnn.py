@@ -38,7 +38,6 @@ class VAERNN(StochasticModel):
         return self.decoder(sample)
 
     def generate_images(self, output_dir: Path, data_holder: DataHolder, limit: int) -> None:
-        raise NotImplementedError
         with eval_mode(self):
             output_dir.mkdir(exist_ok=True)
             for batch_id, (x_batch, _) in enumerate(data_holder.test):
