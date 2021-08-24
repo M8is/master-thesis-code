@@ -1,0 +1,41 @@
+task: 'vaernn'
+vae_type: 'fc'
+seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+dataset: 'sinus_frequencies'
+batch_size: 32
+distribution: 'MultivariateNormal'
+latent_dim: 4
+rnn_block: 'lstm'
+hidden_dim: 64
+rnn_n_layers: 1
+rnn_nonlinearity: 'tanh'
+bidirectional: false
+epochs: 50
+learning_rate: 0.0005
+dropout: 0.
+joblib_jobs: 1
+device: 'cuda'
+compute_perf: false
+subpath_keys:
+  - 'mc_estimator'
+  - 'sample_size'
+runs:
+  - mc_estimator: 'MVD'
+    sample_size: 1
+  - mc_estimator: 'Pathwise'
+    sample_size: 1
+  - mc_estimator: 'Pathwise'
+    sample_size: 20
+  - mc_estimator: 'Pathwise'
+    sample_size: 80
+  - mc_estimator: 'Reinforce'
+    sample_size: 10
+  - mc_estimator: 'Reinforce'
+    sample_size: 40
+  - mc_estimator: 'Reinforce'
+    sample_size: 80
