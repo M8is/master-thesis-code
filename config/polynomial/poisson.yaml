@@ -1,5 +1,9 @@
 task: 'polynomial'
 seeds:
+  - 1938728
+  - 4763872
+  - 6372164
+  - 8472984
   - 9074185
 distribution: 'poisson'
 latent_dim: 1
@@ -18,4 +22,4 @@ runs:
     learning_rate: 0.01
   - mc_estimator: 'MVD'
     sample_size: 1
-    learning_rate: 0.1
+    learning_rate: 0.01

@@ -1,5 +1,9 @@
 task: 'polynomial'
 seeds:
+  - 1938728
+  - 4763872
+  - 6372164
+  - 8472984
   - 9074185
 distribution: 'categorical'
 latent_dim: 1
@@ -17,7 +21,7 @@ subpath_keys:
 device: 'cuda'
 runs:
   - mc_estimator: 'Reinforce'
-    sample_size: 100
+    sample_size: 3
   - mc_estimator: 'MVD'
     sample_size: 1
   - mc_estimator: 'Pathwise'

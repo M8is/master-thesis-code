@@ -8,6 +8,7 @@ from models.pure_probability_distribution import PureProbDistModel
 from models.stochastic_model import StochasticModel
 from tasks.trainer import StochasticTrainer
 from utils.distribution_factory import get_distribution_type
+from utils.eval_util import eval_mode
 
 
 class TrainPolynomial(StochasticTrainer):
@@ -33,6 +34,14 @@ class TrainPolynomial(StochasticTrainer):
 
     def loss(self, inputs: torch.Tensor, labels: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
         return self.polynomial(outputs).float().squeeze(-1)
+
+    def _test_epoch(self) -> None:
+        with eval_mode(self.model):
+            empty = torch.empty(0)
+            distribution = self.model.encode(empty)
+            x_recons = self.model.interpret(distribution.sample((10000,)), empty)
+            losses = self.loss(empty, empty, x_recons).mean()
+            self.test_losses.add(losses)
 
     def post_epoch(self, epoch: int) -> None:
         # Override removes info logging

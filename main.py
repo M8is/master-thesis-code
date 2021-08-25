@@ -38,7 +38,7 @@ def main(args):
 
     # Run seeds in parallel
     def training(config):
-        print(f"=== Training {i + 1}/{len(new_configs)} ===")
+        print(f"======")
         fix_random_seed(config['seed'])
         trainer = get_trainer(config['task'], config)
         trainer.train()

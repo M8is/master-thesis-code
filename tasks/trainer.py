@@ -57,8 +57,8 @@ class StochasticTrainer(ABC):
         model_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(self.model, model_path)
         for epoch in range(1, self.epochs + 1):
-            self.__train_epoch()
-            self.__test_epoch()
+            self._train_epoch()
+            self._test_epoch()
             if epoch == self.epochs or (self.save_model_interval and epoch % self.save_model_interval == 0):
                 model_path = Path(self.results_dir) / f'{self.gradient_estimator.name()}_{epoch}.pt'
                 model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +67,7 @@ class StochasticTrainer(ABC):
         for metric in self.metrics:
             metric.save()
 
-    def __train_epoch(self) -> None:
+    def _train_epoch(self) -> None:
         self.model.train()
         for batch_id, (x_batch, y_batch) in enumerate(self.data_holder.train):
             x_batch = x_batch.to(self.device)
@@ -97,7 +97,7 @@ class StochasticTrainer(ABC):
             self.train_losses.add(loss + kld)
             self.post_iteration(batch_id, loss, kld)
 
-    def __test_epoch(self) -> None:
+    def _test_epoch(self) -> None:
         with eval_mode(self.model):
             test_losses = []
             for x_batch, y_batch in self.data_holder.test:

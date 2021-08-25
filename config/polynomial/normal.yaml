@@ -1,5 +1,9 @@
 task: 'polynomial'
 seeds:
+  - 1938728
+  - 4763872
+  - 6372164
+  - 8472984
   - 9074185
 distribution: 'normal'
 latent_dim: 1

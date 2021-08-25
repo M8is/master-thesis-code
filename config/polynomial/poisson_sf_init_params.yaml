@@ -1,5 +1,9 @@
 task: 'polynomial'
 seeds:
+  - 1938728
+  - 4763872
+  - 6372164
+  - 8472984
   - 9074185
 distribution: 'poisson'
 latent_dim: 1
@@ -11,7 +15,7 @@ save_model_interval: 10
 optimize_kld: false
 mc_estimator: 'Reinforce'
 sample_size: 2
-learning_rate: 0.01
+learning_rate: 0.001
 subpath_keys:
   - 'init_rate'
 device: 'cuda'
